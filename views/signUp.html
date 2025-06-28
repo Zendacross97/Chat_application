@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>signUp</title>
+    <!-- <link rel="stylesheet" href="/css/signUp.css"> -->
 </head>
 <body>
     <header>
@@ -11,7 +12,7 @@
         <h3>SignUp to create an account</h3>
     </header>
     <main>
-        <form action="/user/signUp" method="POST">
+        <form onsubmit="signUp(event)" id="signUpForm">
             <label for="name">Name:</label>
             <input type="text" id="name" name="name" placeholder="Enter your name" required>
             <br>
@@ -26,7 +27,9 @@
             <br><br>
             <button type="signUp">Sign Up</button>
         </form>
-        <p>Already have an account? <a href="/user/login">Login here</a></p>
+        <p class="signUp-message">Already have an account? <a href="/user/login">Login here</a></p>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.8.4/axios.min.js"></script>
+        <script src="/js/signUp.js"></script>
     </main>
 </body>
 </html>
