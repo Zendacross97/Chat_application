@@ -13,7 +13,7 @@ function signUp(event) {
         window.location.href = '/user/login';
     })
     .catch((err) => {
-        const p = document.querySelector('.signup-message');
+        const p = document.querySelector('.signUp-message');
         p.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
         p.style.color = 'red';
         console.log(err.message);

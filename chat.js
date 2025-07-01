@@ -12,7 +12,11 @@ const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'),
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000',
+    credentials: true, // Allow credentials if needed
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed methods
+}));
 app.use(morgan('combined', {stream: accessLogStream}));
 app.use(express.json());
 app.use(express.static('public'));
@@ -23,7 +27,7 @@ app.use('/user', userRoute);
 
 db.sync({force: false})
 .then(() => {
-    app.listen(process.env.PORT || 3000, () => {
+    app.listen(process.env.PORT , () => {
         console.log("Server is running on http://localhost:3000");
     });
 })

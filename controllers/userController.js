@@ -9,7 +9,7 @@ exports.signUp = async (req, res) => {
         }
         const userDetails = await UserServices.getUserByEmail(email);
         if (userDetails.length !== 0) {
-            return res.status(400).json({ error: 'User already exists' });
+            return res.status(400).json({ error: 'User already exists, Please Login' });
         }
         bcrypt.hash(password, 10, async (err, hash) => {
             if (err) {
@@ -17,7 +17,7 @@ exports.signUp = async (req, res) => {
             }
             else {
                 await UserServices.createUser(name, email, number, hash);
-                res.status(201).json({ message: 'User created successfully' });
+                res.status(201).json({ message: 'Successfuly signed up' });
             }
         });
     } catch (error) {
