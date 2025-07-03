@@ -18,8 +18,5 @@ function signUp(event) {
         p.style.color = 'red';
         console.log(err.message);
     });
-    event.target.name.value = '';
-    event.target.email.value = '';
-    event.target.number.value = '';
-    event.target.password.value = '';
+    event.target.reset();
 }
