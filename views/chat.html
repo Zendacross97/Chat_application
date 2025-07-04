@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick-Chat</title>
+</head>
+<body>
+    <header>
+        <h1>Quick Chat</h1>
+    </header>
+    <main>
+        <form id="chatForm" onsubmit="sendMessage(event)">
+            <input type="hidden" id="username" name="username">
+            <label for="message">Message:</label>
+            <input type="text" id="message" name="message" placeholder="Type your message here" required>
+            <button type="submit">Send</button>
+        </form>
+
+        <div id="chatMessages">
+            <h3>Chat Messages</h3>
+            <ul class="messages"></ul>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.8.4/axios.min.js"></script>
+        <script src="/js/chat.js"></script>
+    </main>
+</body>
+</html>
