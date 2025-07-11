@@ -6,7 +6,10 @@ const morgan = require('morgan');
 const fs = require('fs');
 const path = require('path');
 const userRoute = require('./routes/userRoutes');
+const chatRoute = require('./routes/chatRoutes');
 const userModel = require('./models/userModel');
+const chatModel = require('./models/chatModel');
+const chatIndexModel = require('./models/chatIndexModel');
 
 const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
 
@@ -24,6 +27,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'signUp.html'));
 });
 app.use('/user', userRoute);
+app.use('/chat', chatRoute);
 
 db.sync({force: false})
 .then(() => {

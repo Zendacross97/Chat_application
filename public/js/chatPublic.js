@@ -1,16 +1,15 @@
 const token = localStorage.getItem('token');
-if (!token) {
-    window.location.href = '/user/login';
-}
+
 function sendMessage(event) {
     event.preventDefault();
     const message = event.target.message.value.trim();
-    axios.post(`/chat/message`,{ message }, { headers: { 'Authorization': token } })
+    axios.post(`/chat/sendChat`,{ message }, { headers: { 'Authorization': token } })
     .then((res) => {
-        postMessage(res.data.message);
+        const errorMessage = document.querySelector('.error-message');
+        errorMessage.innerHTML = '';
+        postMessage(res.data);
     })
     .catch((err) => {
-        const messageInput = document.querySelector('.message-input');
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
         errorMessage.style.color = 'red';
@@ -20,28 +19,31 @@ function sendMessage(event) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    axios.get('/chat/message', { headers: { 'Authorization': token } })
-    .then((res) => {
-        res.data.messages.forEach(message => {
-            postMessage(message);
-        });
-    })
-    .catch((err) => {
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
-        console.log(err.message);
-    });
+    if (!token) {
+        window.location.href = '/user/login';
+    }
     showMessages();
 });
 
-function postMessage(message) {
-    const ul = document.querySelector('.messages');
-    const li = document.createElement('li');
-    li.innerHTML = `<p>${message}</p>`;
-    ul.appendChild(messageElement);
+function showMessages() {
+    axios.get('/chat/getChat', { headers: { 'Authorization': token } })
+    .then((res) => {
+        const errorMessage = document.querySelector('.error-message');
+        errorMessage.innerHTML = '';
+        res.data.forEach(chat => {
+            postMessage(chat);
+        });
+    })
+    .catch((err) => {
+        const errorMessage = document.querySelector('.error-message');
+        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
+        errorMessage.style.color = 'red';
+     });
 }
 
-function showMessages() {
+function postMessage(chat) {
     const ul = document.querySelector('.messages');
-    ul.style.display = 'block';
+    const li = document.createElement('li');
+    li.innerHTML = `<p><strong>${chat.name}</strong>: ${chat.message}</p>`;
+    ul.appendChild(li);
 }

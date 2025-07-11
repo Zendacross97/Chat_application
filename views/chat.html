@@ -11,11 +11,12 @@
     </header>
     <main>
         <form id="chatForm" onsubmit="sendMessage(event)">
-            <input type="hidden" id="username" name="username">
             <label for="message">Message:</label>
             <input type="text" id="message" name="message" placeholder="Type your message here" required>
             <button type="submit">Send</button>
         </form>
+
+        <p class="error-message"></p>
 
         <div id="chatMessages">
             <h3>Chat Messages</h3>
@@ -23,7 +24,7 @@
         </div>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.8.4/axios.min.js"></script>
-        <script src="/js/chat.js"></script>
+        <script src="/js/chatPublic.js"></script>
     </main>
 </body>
 </html>
