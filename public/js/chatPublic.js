@@ -23,9 +23,12 @@ window.addEventListener('DOMContentLoaded', () => {
         window.location.href = '/user/login';
     }
     showMessages();
+    setInterval(showMessages, 1000); // Calls showMessages every 1000ms (second)
 });
 
 function showMessages() {
+    const ul = document.querySelector('.messages');
+    ul.innerHTML = ''; // Clear existing messages
     axios.get('/chat/getChat', { headers: { 'Authorization': token } })
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
