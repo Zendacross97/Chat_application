@@ -1,4 +1,6 @@
 const token = localStorage.getItem('token');
+let chats = [];
+let id = -1; // Initialize id to -1 to indicate no messages fetched yet
 
 function sendMessage(event) {
     event.preventDefault();
@@ -7,7 +9,6 @@ function sendMessage(event) {
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
-        postMessage(res.data);
     })
     .catch((err) => {
         const errorMessage = document.querySelector('.error-message');
@@ -22,20 +23,36 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!token) {
         window.location.href = '/user/login';
     }
-    showMessages();
-    setInterval(showMessages, 1000); // Calls showMessages every 1000ms (second)
+    setInterval(getMessages, 1000);    // Calls getMessages every 1 second
+    setInterval(showMessages, 1000); // Calls getMessages every 1000ms (second)
 });
 
-function showMessages() {
-    const ul = document.querySelector('.messages');
-    ul.innerHTML = ''; // Clear existing messages
-    axios.get('/chat/getChat', { headers: { 'Authorization': token } })
+function getMessages() {
+    axios.get(`/chat/getChat?lastMessageId=${id}`, { headers: { 'Authorization': token } })
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
-        res.data.forEach(chat => {
-            postMessage(chat);
-        });
+        if (id === -1) {
+            localStorage.removeItem('chats'); // Clear previous chats if id is -1
+            chats = []; // Reset chats array
+            res.data.forEach(chat => {
+                chats.push(chat);
+            });
+            id = res.data[0].id; // Update id to the last message's id as data is in descending order
+        }
+        else {
+            if (res.data.length !== 0) {
+                res.data.forEach(chat => {
+                chats.unshift(chat);
+                chats.pop(); // Remove the oldest chat if more than 10
+                });
+                id = res.data[res.data.length - 1].id; // Update id to the last message's id
+            }
+            else {
+                return; // No new messages, exit the function
+            }
+        }
+        localStorage.setItem('chats', JSON.stringify(chats));
     })
     .catch((err) => {
         const errorMessage = document.querySelector('.error-message');
@@ -44,9 +61,17 @@ function showMessages() {
      });
 }
 
-function postMessage(chat) {
+function showMessages() {
+    localStorage.getItem('chats');
+    const localChats = JSON.parse(localStorage.getItem('chats')) || [];
+    if (localChats === chats){
+        return; // No new messages to display
+    }
     const ul = document.querySelector('.messages');
-    const li = document.createElement('li');
-    li.innerHTML = `<p><strong>${chat.name}</strong>: ${chat.message}</p>`;
-    ul.appendChild(li);
+    ul.innerHTML = ''; // Clear existing messages
+    chats.forEach(chat => {
+        const li = document.createElement('li');
+        li.innerHTML = `<p><strong>${chat.name}</strong>: ${chat.message}</p>`;
+        ul.appendChild(li);
+    });
 }
