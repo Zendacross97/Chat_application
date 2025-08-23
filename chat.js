@@ -7,9 +7,12 @@ const fs = require('fs');
 const path = require('path');
 const userRoute = require('./routes/userRoutes');
 const chatRoute = require('./routes/chatRoutes');
+const groupRoute = require('./routes/groupRoutes');
 const userModel = require('./models/userModel');
 const chatModel = require('./models/chatModel');
 const chatIndexModel = require('./models/chatIndexModel');
+const groupsModel = require('./models/groupsModel');
+const userGroupsModel = require('./models/userGroupsModel');
 
 const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
 
@@ -28,6 +31,7 @@ app.get('/', (req, res) => {
 });
 app.use('/user', userRoute);
 app.use('/chat', chatRoute);
+app.use('/group', groupRoute);
 
 db.sync({force: false})
 .then(() => {

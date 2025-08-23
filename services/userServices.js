@@ -1,4 +1,5 @@
 const User = require('../models/userModel');
+const { Op } = require('sequelize');
 
 exports.createUser = async (name, email, number, password) => {
     try {
@@ -26,5 +27,15 @@ exports.getNameOfUserById = async (userId) => {
         });
     } catch (error) {
         throw new Error('Error fetching user by ID:', error.message);
+    }
+}
+
+exports.getAllUsersExceptCurrent = async (userId) => {
+    try {
+        return await User.findAll({
+            where: { id: { [Op.ne]: userId } },
+        });
+    } catch (error) {
+        throw new Error('Error fetching all users:', error.message);
     }
 }

@@ -9,22 +9,34 @@
     <header>
         <h1>Quick Chat</h1>
     </header>
-    <main>
-        <form id="chatForm" onsubmit="sendMessage(event)">
-            <label for="message">Message:</label>
-            <input type="text" id="message" name="message" placeholder="Type your message here" required>
-            <button type="submit">Send</button>
-        </form>
-
-        <p class="error-message"></p>
-
-        <div id="chatMessages">
-            <h3>Chat Messages</h3>
-            <ul class="messages"></ul>
-        </div>
-
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.8.4/axios.min.js"></script>
-        <script src="/js/chatPublic.js"></script>
+    <main class="chat-container">
+        <aside class="section-sidebar">
+            <header>
+                <select name="section" id="section">
+                    <option value="groups">Groups</option>
+                    <option value="users">Users</option>
+                </select>
+            </header>
+            <div class="groupHeader"></div>
+            <form id="search"></form>
+            <ul class="section-list">
+                <!-- Group items will go here -->
+            </ul>
+        </aside>
+        <section class="chat-main">
+            <header>
+                <h2 id="chat-heading"></h2>
+            </header>
+            <form id="chatForm"></form>
+            <p class="error-message"></p>
+            <div id="chatMessages">
+                <ul class="messages">
+                    <!-- Chat messages will go here -->
+                </ul>
+            </div>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.8.3/axios.min.js"></script>
+            <script src="/js/chatPublic.js"></script>
+        </section>
     </main>
 </body>
 </html>
