@@ -6,9 +6,10 @@ const router = express.Router();
 
 router.post('/createGroup', userAuthentication.authenticate, groupController.createGroup);
 router.get('/getAllGroups', userAuthentication.authenticate, groupController.getAllGroups);
-router.get('/getGroupMembers/:groupId', userAuthentication.authenticate, groupController.getGroupMembers);
-router.get('/getUnaddedUsers/:groupId', userAuthentication.authenticate, groupController.getUnaddedUsers);
-router.post('/addUserToGroup/:groupId/:userId', userAuthentication.authenticate, groupController.addUserToGroup);
+router.post('/addUserToGroup/:groupId', userAuthentication.authenticate, groupController.addUserToGroup);
+router.post('/removeUserFromGroup/:groupId', userAuthentication.authenticate, groupController.removeUserFromGroup);
+router.post('/promoteMembers/:groupId', userAuthentication.authenticate, groupController.promoteToAdmin);
+router.post('/demoteMembers/:groupId', userAuthentication.authenticate, groupController.demoteFromAdmin);
 router.delete('/leaveGroup/:groupId', userAuthentication.authenticate, groupController.leaveGroup);
 
 module.exports = router;

@@ -70,7 +70,6 @@ exports.getLastRemainingChats = async (lastMessageId, id, userId, chatType) => {
                     [Op.gt]: lastMessageId // Fetch chats with ID greater than lastMessageId
                 }
             },
-            // order: [['createdAt', 'DESC']]
         });
     } catch (error) {
         throw new Error('Error fetching remaining chat history:', error.message);

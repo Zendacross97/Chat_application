@@ -1,12 +1,13 @@
 const Group = require('../models/groupsModel');
-const UserGroup = require('../models/userGroupsModel');
 const User = require('../models/userModel');
+const UserGroup = require('../models/userGroupsModel');
+const GroupAdmin = require('../models/groupAdminModel');
 const {Op} = require('sequelize');
 
 exports.getAllGroups = async (userId) => {
     try {
         // Fetch all groups associated with the user, ordered by name alphabetically
-        const groups = await Group.findAll({
+        const groupLists = await Group.findAll({
             include: [{
                 model: UserGroup,
                 as: 'userGroups', // Specify the alias
@@ -14,6 +15,70 @@ exports.getAllGroups = async (userId) => {
             }],
             order: [['name', 'ASC']]
         });
+
+        const groups = await Promise.all(groupLists.map( async (group) => {
+
+            // fetch group members except the current user
+            const groupMembers = await UserGroup.findAll({
+                where: { 
+                    groupId: group.id,
+                    userId: { [Op.ne]: userId } // Exclude the current user
+                },
+                attributes: ['userId'],
+                include: [{
+                    model: User,
+                    attributes: ['id', 'name', 'number'] // Specify the attributes you want to retrieve
+                }]
+            });
+            const users = groupMembers.map(g => g.user);
+            const memberIds = users.map(user => user.id);
+
+            // Check if current user is admin
+            const isAdmin = await GroupAdmin.findOne({ where: { groupId: group.id, userId } });
+
+            //Fetch admin members execept the current user
+            const admins = await GroupAdmin.findAll({
+                where: { 
+                    groupId: group.id,
+                    userId: { [Op.ne]: userId } // Exclude the current user
+                },
+                attributes: ['userId']
+            });
+            const adminIds = admins.map(admin => admin.userId);
+            
+            // get all group members with their admin status
+            const allGroupMembers = users.map(user => ({
+                id: user.id,
+                name: user.name,
+                number: user.number,
+                isAdmin: adminIds.includes(user.id)
+            }));
+
+            // Fetch all users except those already in the group
+            const nonGroupMembers = await User.findAll({
+                where: { 
+                    [Op.and]: [
+                        { id: { [Op.notIn]: memberIds } },
+                        { id: { [Op.ne]: userId } }
+                    ]
+                },
+                attributes: ['id', 'name', 'number'] // Specify the attributes you want to retrieve
+            });
+
+            // Filter out admins from group members to get promotable members
+            const promotableMembers = users.filter(user => !adminIds.includes(user.id));
+
+            // Filter out non-admins from group members to get demotable members
+            const demotableMembers = users.filter(user => adminIds.includes(user.id));
+
+            if (!!isAdmin) {
+                return { id: group.id, name: group.name, type: group.type , isAdmin: !!isAdmin, members: allGroupMembers, admins: demotableMembers, non_admins: promotableMembers, non_members: nonGroupMembers };
+            }
+            else {
+                return { id: group.id, name: group.name, type: group.type , isAdmin: !!isAdmin, members: allGroupMembers };
+            }
+        }));
+
         return groups;
     } catch (error) {
         console.log(error);
@@ -28,6 +93,9 @@ exports.createGroup = async (name, userId) => {
         
         // Associate the user with the group
         await UserGroup.create({ userId, groupId: group.id });
+
+        // Make the user an admin of the group
+        await GroupAdmin.create({ userId, groupId: group.id });
         
         return group;
     } catch (error) {
@@ -36,58 +104,67 @@ exports.createGroup = async (name, userId) => {
     }
 }
 
-exports.getGroupMembers = async (groupId) => {
+exports.isUserAdmin = async (groupId, userId) => {
     try {
-        // Fetch group members
-        const group = await UserGroup.findAll({
-            where: { groupId },
-            include: [{
-                model: User,
-               attributes: ['id', 'name'] // Specify the attributes you want to retrieve
-            }]
-        });
-
-        if (!group) {
-            throw new Error('Group not found');
-        }
-
-        return group;
+        const admin = await GroupAdmin.findOne({ where: { groupId, userId } });
+        return !!admin; // Return true if admin exists, false otherwise
     } catch (error) {
         console.log(error);
-        throw new Error('Error fetching group members:', error.message);
+        throw new Error('Error checking admin status:', error.message);
     }
 }
 
-exports.getUnaddedUsers = async (groupId, userId) => {
+exports.isUserInGroup = async (groupId, userId) => {
     try {
-        // Fetch users who are not part of the group
-        const unaddedUsers = await UserGroup.findAll({
-            where: { groupId: groupId },
-            attributes: ['userId']
-        });
-
-        const userIds = unaddedUsers.map(user => user.userId);
-        
-        // Fetch all users except those already in the group
-        const users = await User.findAll({
-            where: { id: { [Op.notIn]: userIds }}
-        });
-        
-        return users;
+        const userGroup = await UserGroup.findOne({ where: { groupId, userId } });
+        return !!userGroup; // Return true if user is in group, false otherwise
     } catch (error) {
         console.log(error);
-        throw new Error('Error fetching unadded users:', error.message);
+        throw new Error('Error checking group membership:', error.message);
     }
 }
 
-exports.addUserToGroup = async (groupId, userId) => {
+exports.addUserToGroup = async (groupId, memberIds) => {
     try {
-        await UserGroup.create({ userId, groupId });
-        
+        // create entries in UserGroup for each userId
+        await Promise.all(memberIds.map(id => UserGroup.create({ userId: id, groupId })));
         return { message: 'User added to group successfully' };
     } catch (error) {
         console.log(error);
         throw new Error('Error adding user to group:', error.message);
+    }
+}
+
+exports.removeUserFromGroup = async (groupId, memberIds) => {
+    try {
+        // Remove entries in UserGroup for each userId
+        await Promise.all(memberIds.map(id => UserGroup.destroy({ where: { userId: id, groupId } })));
+        return { message: 'User(s) removed from group successfully' };
+    } catch (error) {
+        console.log(error);
+        throw new Error('Error removing user from group:', error.message);
+    }
+}
+
+exports.promoteToAdmin = async (groupId, memberIds) => {
+    try {
+        // create entries in GroupAdmin for each userId
+        await Promise.all(memberIds.map(id => GroupAdmin.create({ userId: id, groupId })));
+        return { message: 'User(s) promoted to admin successfully' };
+    } catch (error) {
+        console.log(error);
+        throw new Error('Error promoting user to admin:', error.message);
+    }
+}
+
+exports.demoteFromAdmin = async (groupId, memberIds) => {
+    try {
+        // Remove entries in GroupAdmin for each userId
+        await Promise.all(memberIds.map(id => GroupAdmin.destroy({ where: { userId: id, groupId } })));
+        return { message: 'User(s) demoted from admin successfully' };
+    } catch (error) {
+        console.log(error);
+        throw new Error('Error demoting user from admin:', error.message);
     }
 }
 
@@ -102,6 +179,9 @@ exports.leaveGroup = async (groupId, userId) => {
         
         // Remove the user from the group
         await UserGroup.destroy({ where: { groupId, userId } });
+
+        // Also remove from GroupAdmin if the user is an admin
+        await GroupAdmin.destroy({ where: { groupId, userId } });
         
         return { message: 'Left group successfully' };
     } catch (error) {

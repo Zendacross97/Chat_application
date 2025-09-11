@@ -2,6 +2,7 @@ const User = require('../models/userModel');
 const Chat = require('../models/chatModel');
 const Group = require('../models/groupsModel');
 const UserGroup = require('../models/userGroupsModel');
+const GroupAdmin = require('../models/groupAdminModel');
 
 //User and Chat models are associated such that a User can have many Chats, and each Chat belongs to a User.
 User.hasMany(Chat);
@@ -25,6 +26,10 @@ UserGroup.belongsTo(User, { foreignKey: 'userId' });
 //Group and Chat models are associated such that a Group can have many Chats, and each Chat belongs to a Group.
 Group.hasMany(Chat);
 Chat.belongsTo(Group);
+
+//Group and Admin models are associated such that a Group can have many Admins, and each Admin belongs to many Groups.
+Group.belongsToMany(User, { through: GroupAdmin });
+User.belongsToMany(Group, { through: GroupAdmin });
 
 module.exports = {
     User,

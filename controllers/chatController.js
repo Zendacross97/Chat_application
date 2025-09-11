@@ -17,9 +17,18 @@ exports.sendChat = async (req, res) => {
         if (!message) {
             return res.status(400).json({ error: 'Chat credentials are incomplete' });
         }
+        if (!type || (type !== 'group' && type !== 'user')) {
+            return res.status(400).json({ error: 'Invalid chat type' });
+        }
         const userId = req.user.id;
         if (!userId) {
             return res.status(401).json({ error: 'User not authenticated' });
+        }
+        if (type === 'group') {
+            const isMember = await groupServices.isUserInGroup(id, userId);
+            if (!isMember) {
+                return res.status(403).json({ error: 'You are not a member of this group' });
+            }
         }
         const user = await userServices.getNameOfUserById(userId);// name is inside an object
         if (!user) {
