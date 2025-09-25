@@ -124,6 +124,27 @@ exports.isUserInGroup = async (groupId, userId) => {
     }
 }
 
+exports.isMemberInGroup = async (groupId, memberIds) => {
+    try {
+        // Find all UserGroup entries for the given groupId and memberIds
+        const userGroups = await UserGroup.findAll({
+            where: {
+                groupId,
+                userId: { [Op.in]: memberIds }
+            }
+        });
+        // Extract userIds that are in the group
+        const inGroup = userGroups.map(ug => ug.userId);
+        // Find userIds that are not in the group
+        const notInGroup = memberIds.filter(id => !inGroup.includes(id));
+        console.log(inGroup, notInGroup);
+        return { inGroup:inGroup, notInGroup:notInGroup };
+    } catch (error) {
+        console.log(error);
+        throw new Error('Error checking group membership:', error.message);
+    }
+}
+
 exports.addUserToGroup = async (groupId, memberIds) => {
     try {
         // create entries in UserGroup for each userId
@@ -138,7 +159,10 @@ exports.addUserToGroup = async (groupId, memberIds) => {
 exports.removeUserFromGroup = async (groupId, memberIds) => {
     try {
         // Remove entries in UserGroup for each userId
-        await Promise.all(memberIds.map(id => UserGroup.destroy({ where: { userId: id, groupId } })));
+        await Promise.all(memberIds.map(id => {
+            UserGroup.destroy({ where: { userId: id, groupId } })
+            GroupAdmin.destroy({ where: { userId: id, groupId } })
+        }));
         return { message: 'User(s) removed from group successfully' };
     } catch (error) {
         console.log(error);

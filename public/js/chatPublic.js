@@ -350,7 +350,7 @@ function showUnaddedUsers(groupId) {
         confirmButton.onclick = function() {
             const checked = form.querySelectorAll('.user-checkbox:checked');
             checked.forEach(cb => {
-                userIds.push(cb.value);
+                userIds.push(+cb.value);
             });
             if (userIds.length > 0) {
                 addUserToGroup(groupId, userIds).then(() => {
@@ -369,11 +369,13 @@ function addUserToGroup(groupId, userIds) {
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
+        alert(res.data.message);
     })
     .catch((err) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
         errorMessage.style.color = 'red';
+        alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
         console.log(err.message);
     });
 }
@@ -396,7 +398,7 @@ function showRemovableUsers(groupId) {
         confirmButton.onclick = function() {
             const checked = form.querySelectorAll('.user-checkbox:checked');
             checked.forEach(cb => {
-                userIds.push(cb.value);
+                userIds.push(+cb.value);
             });
             if (userIds.length > 0) {
                 removeUserFromGroup(groupId, userIds).then(() => {
@@ -415,11 +417,13 @@ function removeUserFromGroup(groupId, userIds) {
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
+        alert(res.data.message);
     })
     .catch((err) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
         errorMessage.style.color = 'red';
+        alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
         console.log(err.message);
     });
 }
@@ -442,7 +446,7 @@ function showPromotableUsers(groupId) {
         confirmButton.onclick = function() {
             const checked = form.querySelectorAll('.user-checkbox:checked');
             checked.forEach(cb => {
-                userIds.push(cb.value);
+                userIds.push(+cb.value);
             });
             if (userIds.length > 0) {
                 promoteMembers(groupId, userIds).then(() => {
@@ -462,11 +466,13 @@ function promoteMembers(groupId, userIds) {
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
+        alert(res.data.message);
     })
     .catch((err) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
         errorMessage.style.color = 'red';
+        alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
         console.log(err.message);
     });
 }
@@ -489,7 +495,7 @@ function showDemotableUsers(groupId) {
         confirmButton.onclick = function() {
             const checked = form.querySelectorAll('.user-checkbox:checked');
             checked.forEach(cb => {
-                userIds.push(cb.value);
+                userIds.push(+cb.value);
             });
             if (userIds.length > 0) {
                 demoteMembers(groupId, userIds).then(() => {
@@ -508,11 +514,13 @@ function demoteMembers(groupId, userIds) {
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
+        alert(res.data.message);
     })
     .catch((err) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
         errorMessage.style.color = 'red';
+        alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
         console.log(err.message);
     });
 }
