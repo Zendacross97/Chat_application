@@ -2,6 +2,7 @@ const path = require('path');
 const chatService = require('../services/chatServices');
 const userServices = require('../services/userServices');
 const groupServices = require('../services/groupServices');
+const awsServices = require('../services/awsServices');
 
 exports.getChatPage = (req, res) => {
     res.sendFile(path.join(__dirname, '../views', 'chat.html'));
@@ -36,8 +37,16 @@ exports.sendChat = async (req, res) => {
         }
         const name = user.name;
         
-        await chatService.createChat(name, message, userId, id, type);
-        res.status(201).json({ name: name, message: message });
+        let mediaUrl = null;
+        if (req.file) {
+            // Upload to S3
+            mediaUrl = await awsServices.uploadToS3(req.file.buffer, req.file.originalname);
+        }
+
+        // Save mediaUrl in your chatService.createChat (add a mediaUrl param)
+        await chatService.createChat(name, message, userId, id, type, mediaUrl);
+
+        res.status(201).json({ name, message, mediaUrl });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });
