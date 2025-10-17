@@ -14,7 +14,11 @@ const ChatModel = sequelize.define('chats', {
     },
     message: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
+    },
+    mediaUrl: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 });
 

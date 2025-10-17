@@ -1,4 +1,5 @@
 config/config.json
-# .env
+.env
 node_modules/
 access.log
+.vscode/

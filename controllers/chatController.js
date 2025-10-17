@@ -15,9 +15,7 @@ exports.sendChat = async (req, res) => {
             return res.status(400).json({ error: 'Chat ID is required' });
         }
         const { message, type } = req.body;
-        if (!message) {
-            return res.status(400).json({ error: 'Chat credentials are incomplete' });
-        }
+        const mediaFile = req.file;
         if (!type || (type !== 'group' && type !== 'user')) {
             return res.status(400).json({ error: 'Invalid chat type' });
         }
@@ -38,13 +36,15 @@ exports.sendChat = async (req, res) => {
         const name = user.name;
         
         let mediaUrl = null;
-        if (req.file) {
+        if (mediaFile) {
             // Upload to S3
-            mediaUrl = await awsServices.uploadToS3(req.file.buffer, req.file.originalname);
+            mediaUrl = await awsServices.uploadToS3(mediaFile.buffer, mediaFile.originalname);
         }
-
+        if (!message && !mediaUrl) {
+            return res.status(400).json({ error: 'There is nothing to send' });
+        }
         // Save mediaUrl in your chatService.createChat (add a mediaUrl param)
-        await chatService.createChat(name, message, userId, id, type, mediaUrl);
+        await chatService.createChat(name, message, mediaUrl, userId, id, type); // Pass mediaUrl to createChat
 
         res.status(201).json({ name, message, mediaUrl });
     } catch (error) {

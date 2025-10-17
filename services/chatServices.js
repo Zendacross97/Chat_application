@@ -1,13 +1,14 @@
 const { Op } = require('sequelize');
 const Chat = require('../models/chatModel');
 
-exports.createChat = async (name, message, userId, id, type) => {
+exports.createChat = async (name, message, mediaUrl, userId, id, type) => {
     try {
         // Create a chat entry based on the type (group or user)
         if (type === 'group') {
             return await Chat.create({ 
                 name: name,
-                message: message, 
+                message: message,
+                mediaUrl: mediaUrl, 
                 userId: userId, 
                 groupId: id 
             });
@@ -16,6 +17,7 @@ exports.createChat = async (name, message, userId, id, type) => {
             return await Chat.create({ 
                 name: name,
                 message: message, 
+                mediaUrl: mediaUrl,
                 userId: userId, 
                 receiverId: id 
             });

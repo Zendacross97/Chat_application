@@ -5,8 +5,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!token) {
         window.location.href = '/user/login';
     }
-    // const section = document.querySelector('#section');
-    // section.value = 'groups'; // Default to 'groups'
     showSearch('Search Groups ...');
     showGroupHeader();
     const chatHeading = document.querySelector('#chat-heading');
@@ -49,39 +47,6 @@ function getAllUsers() {
     });
 }
 
-// const section = document.querySelector('#section');
-// section.addEventListener('change', (event) => {
-//     lastId = -1; // Reset id to -1 to fetch new messages
-//     if (chatInterval) {
-//         clearInterval(chatInterval); // Clear previous interval if exists
-//         chatInterval = null; // Reset chatInterval
-//     }
-//     const chatForm = document.querySelector('#chatForm');
-//     chatForm.innerHTML = ''; // Clear chat form
-//     const ul = document.querySelector('.messages');
-//     ul.innerHTML = ''; // Clear chat messages
-//     const errorMessage = document.querySelector('.error-message');
-//     errorMessage.innerHTML = ''; // Clear error messages
-//     const value = event.target.value;
-//     const groupHeader = document.querySelector('.section-header');
-//     const chatHeading = document.querySelector('#chat-heading');
-//     let placeholder
-//     if (value === 'groups') {
-//         placeholder = 'Search Groups ...';
-//         showSearch(placeholder);
-//         showGroupHeader();
-//         showAllGroups();
-//         chatHeading.textContent = `Select on of the ${ value } to start chatting`;
-//     }
-//     else if (value === 'users') {
-//         placeholder = 'Search Users ...';
-//         showSearch(placeholder);
-//         groupHeader.innerHTML = '<h3>Users</h3>';
-//         showAllUsers();
-//         chatHeading.textContent = `Select on of the ${ value } to start chatting`;
-//     }
-// });
-
 function showSearch(placeholder) {
     const searchForm = document.querySelector('#search');
     searchForm.innerHTML = `<input type="text" id="searchInput" placeholder="${placeholder}">`;
@@ -116,20 +81,10 @@ function showAllUsers() {
             <span class="number" style="display:none">${user.number}</span>
         `;
         li.addEventListener('click', () => {
-            lastId = -1; // Reset id to -1 to fetch new messages
+            refreshChat();
             const chatHeading = document.querySelector('#chat-heading');
             chatHeading.innerHTML = `${user.name}`;
-            const chatForm = document.querySelector('#chatForm');
-            chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here" required>
-            <button type="submit">Send</button>`;
-            chatForm.addEventListener('submit', (event) => {
-                sendChat(event, user.id, user.type);
-            });
-            if (chatInterval) {
-                clearInterval(chatInterval); // Clear previous interval if exists
-                chatInterval = null; // Reset chatInterval
-            }
-            chatInterval = setInterval(() => getChats(user.id, user.type), 1000); // Fetch chats every 1 second
+            createChatFormAndGetChats(user.id, user.type);
         });
         userList.appendChild(li);
     });
@@ -169,20 +124,6 @@ function showGroupHeader() {
     createGroupFormButton.addEventListener('click', () => {
         createGroupForm();
     });
-}
-
-function refreshChat() {
-    lastId = -1; // Reset id to -1 to fetch new messages
-    if (chatInterval) {
-        clearInterval(chatInterval); // Clear previous interval if exists
-        chatInterval = null; // Reset chatInterval
-    }
-    const chatForm = document.querySelector('#chatForm');
-    chatForm.innerHTML = ''; // Clear chat form
-    const ul = document.querySelector('.messages');
-    ul.innerHTML = ''; // Clear chat messages
-    const errorMessage = document.querySelector('.error-message');
-    errorMessage.innerHTML = ''; // Clear error messages
 }
 
 function createGroupForm() {
@@ -256,7 +197,7 @@ function showAllGroups() {
 }
 
 function showGroupChatSection(groupId, groupName, groupType) {
-    lastId = -1; // Reset id to -1 to fetch new messages
+    refreshChat();
     const chatHeading = document.querySelector('#chat-heading');
     chatHeading.innerHTML = `${groupName} <button id="showMembersBtn">Members</button> <button id="leaveGroupBtn">Leave</button>`;
     const showMembersBtn = document.querySelector('#showMembersBtn');
@@ -267,16 +208,7 @@ function showGroupChatSection(groupId, groupName, groupType) {
     leaveGroupBtn.addEventListener('click', () => {
         leaveGroup(groupId);
     })
-    const chatForm = document.querySelector('#chatForm');
-    chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here" required>
-    <button type="submit">Send</button>`;
-    chatForm.addEventListener('submit', (event) => {
-        sendChat(event, groupId, groupType);
-    });
-    if (chatInterval) {
-        clearInterval(chatInterval); // Clear previous interval if exists
-    }
-    chatInterval = setInterval(() => getChats(groupId, groupType), 1000); // Fetch chats every 1 second
+    createChatFormAndGetChats(groupId, groupType);
 }
 
 function showGroupMemebers(groupId) {
@@ -606,20 +538,53 @@ function leaveGroup(groupId) {
     });
 }
 
+function refreshChat() {
+    lastId = -1; // Reset id to -1 to fetch new messages
+    if (chatInterval) {
+        clearInterval(chatInterval); // Clear previous interval if exists
+        chatInterval = null; // Reset chatInterval
+    }
+    document.querySelector('#chat_form').innerHTML = ''; // Clear previous chat form
+    // const chatForm = document.querySelector('#chatForm');
+    // chatForm.innerHTML = ''; // Clear chat form
+    const ul = document.querySelector('.messages');
+    ul.innerHTML = ''; // Clear chat messages
+    const errorMessage = document.querySelector('.error-message');
+    errorMessage.innerHTML = ''; // Clear error messages
+}
+
+function createChatFormAndGetChats(id, type) {
+    document.querySelector('#chat_form').innerHTML = ''; // Clear previous chat form
+    const chatForm = document.createElement('form');
+    chatForm.id = `chatForm_${id}`;
+    chatForm.className = `chatForm_${type}`;
+    document.querySelector('#chat_form').appendChild(chatForm);
+    chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here">
+    <input type="file" name="media">
+    <button type="submit">Send</button>`;
+    chatForm.addEventListener('submit', (event) => {
+        sendChat(event, id, type);
+    });
+    chatInterval = setInterval(() => getChats(id, type), 1000); // Fetch chats every 1 second
+}
+
 function sendChat(event, id, type) {
     event.preventDefault();
-    const message = event.target.message.value.trim();
-    axios.post(`/chat/sendChat/${id}`,{ message, type }, { headers: { 'Authorization': token } })
+    const form = event.target;
+    const formData = new FormData(form);
+    const message = formData.get('message').trim();
+    formData.set('type', type); // add type to FormData
+    formData.set('message', message);
+    axios.post(`/chat/sendChat/${id}`, formData, { headers: { 'Authorization': token } })
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
+        console.log(id, type);
     })
     .catch((err) => {
-        refreshChat();
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
+        alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
         console.log(err.message);
+        console.log(id, type);
     });
     event.target.reset();
 }
@@ -665,13 +630,43 @@ function getChats(id, chatType) {
 }
 
 function showChats() {
-    localStorage.getItem('chats');
     const localChats = JSON.parse(localStorage.getItem('chats')) || [];
     const ul = document.querySelector('.messages');
     ul.innerHTML = ''; // Clear existing messages
     localChats.forEach(chat => {
         const li = document.createElement('li');
-        li.innerHTML = `<p><strong>${chat.name}</strong>: ${chat.message}</p>`;
+        li.innerHTML = `
+            <div class="chat-header">
+                <span class="chat-name">${chat.name}</span>
+                <span class="chat-time">${chat.createdAt ? formatTime(chat.createdAt) : ''}</span>
+            </div>
+            <div class="chat-body">
+                <span class="chat-text">${chat.message}</span>
+                ${chat.mediaUrl ? getMediaHtml(chat.mediaUrl) : ''}
+            </div>
+        `;
         ul.appendChild(li);
     });
+}
+
+function getMediaHtml(mediaUrl) {
+  if (!mediaUrl) return '';
+  const ext = mediaUrl.split('.').pop().toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
+    return `<div class="chat-media"><img src="${mediaUrl}" alt="media" style="max-width:200px;max-height:200px;"></div>`;
+  }
+  if (['mp4', 'webm', 'ogg'].includes(ext)) {
+    return `<div class="chat-media"><video src="${mediaUrl}" controls style="max-width:200px;max-height:200px;"></video></div>`;
+  }
+  // For other files
+  return `<div class="chat-media"><a href="${mediaUrl}" target="_blank" download>Download File</a></div>`;
+}
+
+function formatTime(dateInput) {
+  const date = new Date(dateInput);
+  let hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12; // Convert 0 to 12 for 12-hour format
+  return `${hours}:${minutes} ${ampm}`;
 }
