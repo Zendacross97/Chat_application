@@ -1,5 +1,7 @@
 const { Op } = require('sequelize');
+const sequelize  = require('../util/db_connection');
 const Chat = require('../models/chatModel');
+const ArchivedChat = require('../models/archivedChatModel');
 
 exports.createChat = async (name, message, mediaUrl, userId, id, type) => {
     try {
@@ -77,3 +79,44 @@ exports.getLastRemainingChats = async (lastMessageId, id, userId, chatType) => {
         throw new Error('Error fetching remaining chat history:', error.message);
     }
 }
+
+exports.archiveAndDeleteOldChats = async (cutoffDate) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const oldChats = await Chat.findAll({
+            where: {
+                createdAt: {
+                    [Op.lt]: cutoffDate
+                }
+            },
+            transaction
+        });
+
+        await ArchivedChat.bulkCreate(
+            oldChats.map(chat => ({
+                name: chat.name,
+                message: chat.message,
+                mediaUrl: chat.mediaUrl,
+                userId: chat.userId,
+                receiverId: chat.receiverId,
+                groupId: chat.groupId
+            })),
+            { transaction }
+        );
+
+        await Chat.destroy({
+            where: {
+                createdAt: {
+                    [Op.lt]: cutoffDate
+                }
+            },
+            transaction
+        });
+
+        await transaction.commit();
+        console.log('Old chats archived and deleted successfully.');
+    } catch (error) {
+        await transaction.rollback();
+        console.error('Transaction failed:', error.message);
+    }
+};

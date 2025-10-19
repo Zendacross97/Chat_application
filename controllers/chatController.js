@@ -3,6 +3,7 @@ const chatService = require('../services/chatServices');
 const userServices = require('../services/userServices');
 const groupServices = require('../services/groupServices');
 const awsServices = require('../services/awsServices');
+const { CronJob } = require('cron');
 
 exports.getChatPage = (req, res) => {
     res.sendFile(path.join(__dirname, '../views', 'chat.html'));
@@ -87,3 +88,19 @@ exports.getChat = async (req, res) => {
         console.log(error);
     }
 };
+
+// Create a CronJob instance to run daily at midnight
+const job = new CronJob(
+  '0 0 * * *', // cron expression: midnight every day
+  async () => {
+    try {
+      const cutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+      await chatService.archiveAndDeleteOldChats(cutoffDate);
+      console.log('Cron job: Archived old chats successfully.');
+    } catch (error) {
+      console.error('Cron job failed:', error.message);
+    }
+  },
+  null,       // onComplete callback (optional)
+  true        // start the job immediately
+);
