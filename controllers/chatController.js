@@ -45,9 +45,9 @@ exports.sendChat = async (req, res) => {
             return res.status(400).json({ error: 'There is nothing to send' });
         }
         // Save mediaUrl in your chatService.createChat (add a mediaUrl param)
-        await chatService.createChat(name, message, mediaUrl, userId, id, type); // Pass mediaUrl to createChat
+        const chat = await chatService.createChat(name, message, mediaUrl, userId, id, type); // Pass mediaUrl to createChat
 
-        res.status(201).json({ name, message, mediaUrl });
+        res.status(201).json({ name: chat.name, message: chat.message, mediaUrl: chat.mediaUrl,  createdAt: chat.createdAt });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });

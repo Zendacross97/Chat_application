@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
+const WebSocket = require('ws');
 const db = require('./util/db_connection');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -18,6 +20,22 @@ const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'),
 
 const app = express();
 
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+let sockets = [];
+
+wss.on("connection", (ws) => {
+    sockets.push(ws)
+
+    //Board Cast
+    ws.on("message", (message) => {
+        sockets.forEach(s => {
+            s.send(message)
+        })
+    })
+})
+
 app.use(cors({
     origin: process.env.BASE_URL, //Allow requests from this origin
     credentials: true, // Allow credentials if needed
@@ -35,7 +53,8 @@ app.use('/group', groupRoute);
 
 db.sync({force: false})
 .then(() => {
-    app.listen(process.env.PORT , () => {
+    // app.listen(process.env.PORT , () => {
+    server.listen(process.env.PORT , () => {
         console.log("Server is running on http://localhost:3000");
     });
 })

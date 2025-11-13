@@ -3,7 +3,6 @@ const User = require('../models/userModel');
 const UserGroup = require('../models/userGroupsModel');
 const GroupAdmin = require('../models/groupAdminModel');
 const {Op} = require('sequelize');
-const sequelize  = require('../util/db_connection');
 
 exports.getAllGroups = async (userId) => {
     try {
@@ -88,21 +87,19 @@ exports.getAllGroups = async (userId) => {
 }
 
 exports.createGroup = async (name, userId) => {
-    const transaction = await sequelize.transaction();
     try {
         // Create the group
-        const group = await Group.create({ name }, { transaction });
+        const group = await Group.create({ name });
         
         // Associate the user with the group
-        await UserGroup.create({ userId, groupId: group.id }, { transaction });
+        await UserGroup.create({ userId, groupId: group.id });
 
         // Make the user an admin of the group
-        await GroupAdmin.create({ userId, groupId: group.id }, { transaction });
-        transaction.commit();
+        await GroupAdmin.create({ userId, groupId: group.id });
+        
         return group;
     } catch (error) {
         console.log(error);
-        await transaction.rollback();
         throw new Error('Error creating group:', error.message);
     }
 }
@@ -160,18 +157,15 @@ exports.addUserToGroup = async (groupId, memberIds) => {
 }
 
 exports.removeUserFromGroup = async (groupId, memberIds) => {
-    const transaction = await sequelize.transaction();
     try {
         // Remove entries in UserGroup for each userId
         await Promise.all(memberIds.map(id => {
-            UserGroup.destroy({ where: { userId: id, groupId }, transaction })
-            GroupAdmin.destroy({ where: { userId: id, groupId }, transaction })
+            UserGroup.destroy({ where: { userId: id, groupId } })
+            GroupAdmin.destroy({ where: { userId: id, groupId } })
         }));
-        await transaction.commit();
         return { message: 'User(s) removed from group successfully' };
     } catch (error) {
         console.log(error);
-        await transaction.rollback();
         throw new Error('Error removing user from group:', error.message);
     }
 }
@@ -199,26 +193,23 @@ exports.demoteFromAdmin = async (groupId, memberIds) => {
 }
 
 exports.leaveGroup = async (groupId, userId) => {
-    const transaction = await sequelize.transaction();
     try {
         // Check if the user is part of the group
-        const userGroup = await UserGroup.findOne({ where: { groupId, userId }, transaction });
+        const userGroup = await UserGroup.findOne({ where: { groupId, userId } });
         
         if (!userGroup) {
-            transaction.rollback();
             throw new Error('User not part of the group');
         }
         
         // Remove the user from the group
-        await UserGroup.destroy({ where: { groupId, userId }, transaction });
+        await UserGroup.destroy({ where: { groupId, userId } });
 
         // Also remove from GroupAdmin if the user is an admin
-        await GroupAdmin.destroy({ where: { groupId, userId }, transaction });
-        transaction.commit();
+        await GroupAdmin.destroy({ where: { groupId, userId } });
+        
         return { message: 'Left group successfully' };
     } catch (error) {
         console.log(error);
-        await transaction.rollback();
         throw new Error('Error leaving group:', error.message);
     }
 }

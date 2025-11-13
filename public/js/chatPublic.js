@@ -1,10 +1,27 @@
 const token = localStorage.getItem('token');
+const socket = new WebSocket("ws://localhost:3000");
+// socket.onmessage = async (event) => {
+//     let chatting = await event.data.text();
+//     showChats({chatting});
+// }
+socket.onmessage = async (event) => {
+    try {
+        const text = await event.data.text(); // convert Blob to string
+        const chat = JSON.parse(text); 
+        showChats([chat]);
+    } catch (err) {
+        console.error("Invalid WebSocket message:", err);
+    }
+};
+
 let chats = [], groups = [], users = [], userIds = [], lastId = -1, chatInterval= null;
 
 window.addEventListener('DOMContentLoaded', () => {
     if (!token) {
         window.location.href = '/user/login';
     }
+    // const section = document.querySelector('#section');
+    // section.value = 'groups'; // Default to 'groups'
     showSearch('Search Groups ...');
     showGroupHeader();
     const chatHeading = document.querySelector('#chat-heading');
@@ -81,10 +98,23 @@ function showAllUsers() {
             <span class="number" style="display:none">${user.number}</span>
         `;
         li.addEventListener('click', () => {
-            refreshChat();
+            lastId = -1; // Reset id to -1 to fetch new messages
             const chatHeading = document.querySelector('#chat-heading');
             chatHeading.innerHTML = `${user.name}`;
-            createChatFormAndGetChats(user.id, user.type);
+            createChatBody(user.id, user.type);
+            // const chatForm = document.querySelector('#chatForm');
+            // chatForm.innerHTML = ''; // Clear chat form
+            // chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here">
+            // <input type="file" name="media">
+            // <button type="submit">Send</button>`;
+            // chatForm.addEventListener('submit', (event) => {
+            //     sendChat(event, user.id, user.type);
+            // });
+            // if (chatInterval) {
+            //     clearInterval(chatInterval); // Clear previous interval if exists
+            //     chatInterval = null; // Reset chatInterval
+            // }
+            // chatInterval = setInterval(() => getChats(user.id, user.type), 1000); // Fetch chats every 1 second
         });
         userList.appendChild(li);
     });
@@ -124,6 +154,20 @@ function showGroupHeader() {
     createGroupFormButton.addEventListener('click', () => {
         createGroupForm();
     });
+}
+
+function refreshChat() {
+    lastId = -1; // Reset id to -1 to fetch new messages
+    if (chatInterval) {
+        clearInterval(chatInterval); // Clear previous interval if exists
+        chatInterval = null; // Reset chatInterval
+    }
+    const chatForm = document.querySelector('#chatForm');
+    chatForm.innerHTML = ''; // Clear chat form
+    const ul = document.querySelector('.messages');
+    ul.innerHTML = ''; // Clear chat messages
+    const errorMessage = document.querySelector('.error-message');
+    errorMessage.innerHTML = ''; // Clear error messages
 }
 
 function createGroupForm() {
@@ -197,7 +241,7 @@ function showAllGroups() {
 }
 
 function showGroupChatSection(groupId, groupName, groupType) {
-    refreshChat();
+    lastId = -1; // Reset id to -1 to fetch new messages
     const chatHeading = document.querySelector('#chat-heading');
     chatHeading.innerHTML = `${groupName} <button id="showMembersBtn">Members</button> <button id="leaveGroupBtn">Leave</button>`;
     const showMembersBtn = document.querySelector('#showMembersBtn');
@@ -208,7 +252,36 @@ function showGroupChatSection(groupId, groupName, groupType) {
     leaveGroupBtn.addEventListener('click', () => {
         leaveGroup(groupId);
     })
-    createChatFormAndGetChats(groupId, groupType);
+    createChatBody(groupId, groupType);
+    // const chatForm = document.querySelector('#chatForm');
+    // chatForm.innerHTML = ''; // Clear chat form
+    // chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here">
+    // <input type="file" name="media">
+    // <button type="submit">Send</button>`;
+    // chatForm.addEventListener('submit', (event) => {
+    //     sendChat(event, groupId, groupType);
+    // });
+    // if (chatInterval) {
+    //     clearInterval(chatInterval); // Clear previous interval if exists
+    // }
+    // chatInterval = setInterval(() => getChats(groupId, groupType), 1000); // Fetch chats every 1 second
+}
+
+function createChatBody(id, type) {
+    const chatForm = document.querySelector('#chatForm');
+    chatForm.innerHTML = ''; // Clear chat form
+    chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here">
+    <input type="file" name="media">
+    <button type="submit">Send</button>`;
+    chatForm.addEventListener('submit', (event) => {
+        sendChat(event, id, type);
+    });
+    if (chatInterval) {
+        clearInterval(chatInterval); // Clear previous interval if exists
+        chatInterval = null; // Reset chatInterval
+    }
+    // chatInterval = setInterval(() => getChats(id, type), 1000); // Fetch chats every 1 second
+    getChats(id, type);
 }
 
 function showGroupMemebers(groupId) {
@@ -538,36 +611,6 @@ function leaveGroup(groupId) {
     });
 }
 
-function refreshChat() {
-    lastId = -1; // Reset id to -1 to fetch new messages
-    if (chatInterval) {
-        clearInterval(chatInterval); // Clear previous interval if exists
-        chatInterval = null; // Reset chatInterval
-    }
-    document.querySelector('#chat_form').innerHTML = ''; // Clear previous chat form
-    // const chatForm = document.querySelector('#chatForm');
-    // chatForm.innerHTML = ''; // Clear chat form
-    const ul = document.querySelector('.messages');
-    ul.innerHTML = ''; // Clear chat messages
-    const errorMessage = document.querySelector('.error-message');
-    errorMessage.innerHTML = ''; // Clear error messages
-}
-
-function createChatFormAndGetChats(id, type) {
-    document.querySelector('#chat_form').innerHTML = ''; // Clear previous chat form
-    const chatForm = document.createElement('form');
-    chatForm.id = `chatForm_${id}`;
-    chatForm.className = `chatForm_${type}`;
-    document.querySelector('#chat_form').appendChild(chatForm);
-    chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here">
-    <input type="file" name="media">
-    <button type="submit">Send</button>`;
-    chatForm.addEventListener('submit', (event) => {
-        sendChat(event, id, type);
-    });
-    chatInterval = setInterval(() => getChats(id, type), 1000); // Fetch chats every 1 second
-}
-
 function sendChat(event, id, type) {
     event.preventDefault();
     const form = event.target;
@@ -577,14 +620,23 @@ function sendChat(event, id, type) {
     formData.set('message', message);
     axios.post(`/chat/sendChat/${id}`, formData, { headers: { 'Authorization': token } })
     .then((res) => {
+        const { mediaUrl, name, createdAt } = res.data;
+        // socket.send(formData);
+        // Send metadata via WebSocket
+        socket.send(JSON.stringify({
+            message,
+            mediaUrl,
+            type,
+            name,
+            createdAt
+        }));
+
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
-        console.log(id, type);
     })
     .catch((err) => {
         alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
         console.log(err.message);
-        console.log(id, type);
     });
     event.target.reset();
 }
@@ -601,6 +653,7 @@ function getChats(id, chatType) {
                 chats.push(chat);
             });
             lastId = res.data[0].id; // Update id to the last message's id as data is in descending order
+            showChats(res.data);
         }
         else {
             if (res.data.length !== 0) {
@@ -611,13 +664,14 @@ function getChats(id, chatType) {
                 });
                 lastId = res.data[res.data.length - 1].id; // Update id to the last message's id
                 localStorage.setItem('chats', JSON.stringify(chats));
+                showChats(res.data);
             }
             else {
                 return; // No new messages, exit the function
             }
         }
         localStorage.setItem('chats', JSON.stringify(chats));
-        showChats();
+        // showChats();
     })
     .catch((err) => {
         const errorMessage = document.querySelector('.error-message');
@@ -629,11 +683,12 @@ function getChats(id, chatType) {
      });
 }
 
-function showChats() {
+function showChats(chats) {
     const localChats = JSON.parse(localStorage.getItem('chats')) || [];
     const ul = document.querySelector('.messages');
-    ul.innerHTML = ''; // Clear existing messages
-    localChats.forEach(chat => {
+    // ul.innerHTML = ''; // Clear existing messages
+    // localChats.forEach(chat => {
+    chats.forEach(chat => {
         const li = document.createElement('li');
         li.innerHTML = `
             <div class="chat-header">
@@ -645,7 +700,8 @@ function showChats() {
                 ${chat.mediaUrl ? getMediaHtml(chat.mediaUrl) : ''}
             </div>
         `;
-        ul.appendChild(li);
+        // ul.appendChild(li);
+        ul.insertBefore(li, ul.firstChild);
     });
 }
 

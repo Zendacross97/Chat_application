@@ -46,7 +46,8 @@ exports.getLastTenChats = async (id, userId, chatType) => {
 
         return await Chat.findAll({
             where: whereClause,
-            order: [['createdAt', 'DESC']],
+            // order: [['createdAt', 'DESC']],
+            order: [['createdAt', 'ASC']],
             limit: 10
         });
     } catch (error) {
