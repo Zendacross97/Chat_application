@@ -46,8 +46,8 @@ exports.getLastTenChats = async (id, userId, chatType) => {
 
         return await Chat.findAll({
             where: whereClause,
-            // order: [['createdAt', 'DESC']],
-            order: [['createdAt', 'ASC']],
+            order: [['createdAt', 'DESC']],
+            // order: [['createdAt', 'ASC']],
             limit: 10
         });
     } catch (error) {
@@ -55,31 +55,31 @@ exports.getLastTenChats = async (id, userId, chatType) => {
     }
 }
 
-exports.getLastRemainingChats = async (lastMessageId, id, userId, chatType) => {
-    try {
-        let whereClause = {};
-        if (chatType === 'group') {
-            whereClause = { groupId: id };
-        } else if (chatType === 'user') {
-            whereClause = {
-                [Op.or]: [
-                    { receiverId: userId, userId: id },
-                    { userId: userId, receiverId: id }
-                ]
-            };
-        }
-        return await Chat.findAll({
-            where: {
-                ...whereClause,
-                id: {
-                    [Op.gt]: lastMessageId // Fetch chats with ID greater than lastMessageId
-                }
-            },
-        });
-    } catch (error) {
-        throw new Error('Error fetching remaining chat history:', error.message);
-    }
-}
+// exports.getLastRemainingChats = async (lastMessageId, id, userId, chatType) => {
+//     try {
+//         let whereClause = {};
+//         if (chatType === 'group') {
+//             whereClause = { groupId: id };
+//         } else if (chatType === 'user') {
+//             whereClause = {
+//                 [Op.or]: [
+//                     { receiverId: userId, userId: id },
+//                     { userId: userId, receiverId: id }
+//                 ]
+//             };
+//         }
+//         return await Chat.findAll({
+//             where: {
+//                 ...whereClause,
+//                 id: {
+//                     [Op.gt]: lastMessageId // Fetch chats with ID greater than lastMessageId
+//                 }
+//             },
+//         });
+//     } catch (error) {
+//         throw new Error('Error fetching remaining chat history:', error.message);
+//     }
+// }
 
 exports.archiveAndDeleteOldChats = async (cutoffDate) => {
     const transaction = await sequelize.transaction();

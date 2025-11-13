@@ -1,7 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
-const WebSocket = require('ws');
+// const WebSocket = require('ws');
+const { Server } = require('socket.io');
 const db = require('./util/db_connection');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -21,18 +22,28 @@ const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'),
 const app = express();
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+// const wss = new WebSocket.Server({ server });
+const io = new Server(server);
 
-let sockets = [];
+// let sockets = [];
 
-wss.on("connection", (ws) => {
-    sockets.push(ws)
+// wss.on("connection", (ws) => {
+//     sockets.push(ws)
+
+//     //Board Cast
+//     ws.on("message", (message) => {
+//         sockets.forEach(s => {
+//             s.send(message)
+//         })
+//     })
+// })
+io.on("connection", (socket) => {
+    console.log('User connected', socket.id);
 
     //Board Cast
-    ws.on("message", (message) => {
-        sockets.forEach(s => {
-            s.send(message)
-        })
+    socket.on("chat-message", (message) => {
+        console.log('user:', socket.id, 'said:', message);
+        io.emit('chat-message', message)
     })
 })
 

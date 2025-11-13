@@ -1,18 +1,9 @@
 const token = localStorage.getItem('token');
-const socket = new WebSocket("ws://localhost:3000");
-// socket.onmessage = async (event) => {
-//     let chatting = await event.data.text();
-//     showChats({chatting});
-// }
-socket.onmessage = async (event) => {
-    try {
-        const text = await event.data.text(); // convert Blob to string
-        const chat = JSON.parse(text); 
-        showChats([chat]);
-    } catch (err) {
-        console.error("Invalid WebSocket message:", err);
-    }
-};
+const socket = io("ws://localhost:3000");
+
+socket.on("chat-message", (message) => {
+    showChats([message]);
+})
 
 let chats = [], groups = [], users = [], userIds = [], lastId = -1, chatInterval= null;
 
@@ -20,8 +11,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!token) {
         window.location.href = '/user/login';
     }
-    // const section = document.querySelector('#section');
-    // section.value = 'groups'; // Default to 'groups'
     showSearch('Search Groups ...');
     showGroupHeader();
     const chatHeading = document.querySelector('#chat-heading');
@@ -102,19 +91,6 @@ function showAllUsers() {
             const chatHeading = document.querySelector('#chat-heading');
             chatHeading.innerHTML = `${user.name}`;
             createChatBody(user.id, user.type);
-            // const chatForm = document.querySelector('#chatForm');
-            // chatForm.innerHTML = ''; // Clear chat form
-            // chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here">
-            // <input type="file" name="media">
-            // <button type="submit">Send</button>`;
-            // chatForm.addEventListener('submit', (event) => {
-            //     sendChat(event, user.id, user.type);
-            // });
-            // if (chatInterval) {
-            //     clearInterval(chatInterval); // Clear previous interval if exists
-            //     chatInterval = null; // Reset chatInterval
-            // }
-            // chatInterval = setInterval(() => getChats(user.id, user.type), 1000); // Fetch chats every 1 second
         });
         userList.appendChild(li);
     });
@@ -253,18 +229,6 @@ function showGroupChatSection(groupId, groupName, groupType) {
         leaveGroup(groupId);
     })
     createChatBody(groupId, groupType);
-    // const chatForm = document.querySelector('#chatForm');
-    // chatForm.innerHTML = ''; // Clear chat form
-    // chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here">
-    // <input type="file" name="media">
-    // <button type="submit">Send</button>`;
-    // chatForm.addEventListener('submit', (event) => {
-    //     sendChat(event, groupId, groupType);
-    // });
-    // if (chatInterval) {
-    //     clearInterval(chatInterval); // Clear previous interval if exists
-    // }
-    // chatInterval = setInterval(() => getChats(groupId, groupType), 1000); // Fetch chats every 1 second
 }
 
 function createChatBody(id, type) {
@@ -621,15 +585,13 @@ function sendChat(event, id, type) {
     axios.post(`/chat/sendChat/${id}`, formData, { headers: { 'Authorization': token } })
     .then((res) => {
         const { mediaUrl, name, createdAt } = res.data;
-        // socket.send(formData);
-        // Send metadata via WebSocket
-        socket.send(JSON.stringify({
+        socket.emit("chat-message", {
             message,
             mediaUrl,
             type,
             name,
             createdAt
-        }));
+        });
 
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
@@ -642,36 +604,42 @@ function sendChat(event, id, type) {
 }
 
 function getChats(id, chatType) {
-    axios.get(`/chat/getChats/${id}?type=${chatType}&lastMessageId=${lastId}`, { headers: { 'Authorization': token } })
+    // axios.get(`/chat/getChats/${id}?type=${chatType}&lastMessageId=${lastId}`, { headers: { 'Authorization': token } })
+    axios.get(`/chat/getChats/${id}?type=${chatType}`, { headers: { 'Authorization': token } })
     .then((res) => {
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
-        if (lastId === -1) {
-            localStorage.removeItem('chats'); // Clear previous chats if id is -1
-            chats = []; // Reset chats array
-            res.data.forEach(chat => {
-                chats.push(chat);
-            });
-            lastId = res.data[0].id; // Update id to the last message's id as data is in descending order
-            showChats(res.data);
-        }
-        else {
-            if (res.data.length !== 0) {
-                res.data.forEach(chat => {
-                    chats.unshift(chat);
-                    if (chats.length > 10) // Limit to last 10 chats
-                    chats.pop(); // Remove the oldest chat if more than 10
-                });
-                lastId = res.data[res.data.length - 1].id; // Update id to the last message's id
-                localStorage.setItem('chats', JSON.stringify(chats));
-                showChats(res.data);
-            }
-            else {
-                return; // No new messages, exit the function
-            }
-        }
-        localStorage.setItem('chats', JSON.stringify(chats));
+        // if (lastId === -1) {
+        //     localStorage.removeItem('chats'); // Clear previous chats if id is -1
+        //     chats = []; // Reset chats array
+        //     res.data.forEach(chat => {
+        //         chats.push(chat);
+        //     });
+        //     lastId = res.data[0].id; // Update id to the last message's id as data is in descending order
+        //     showChats(res.data);
+        // }
+        // else {
+        //     if (res.data.length !== 0) {
+        //         res.data.forEach(chat => {
+        //             chats.unshift(chat);
+        //             if (chats.length > 10) // Limit to last 10 chats
+        //             chats.pop(); // Remove the oldest chat if more than 10
+        //         });
+        //         lastId = res.data[res.data.length - 1].id; // Update id to the last message's id
+        //         localStorage.setItem('chats', JSON.stringify(chats));
+        //         showChats(res.data);
+        //     }
+        //     else {
+        //         return; // No new messages, exit the function
+        //     }
+        // }
+        // localStorage.setItem('chats', JSON.stringify(chats));
         // showChats();
+        chats = []; // Reset chats array
+        res.data.forEach(chat => {
+            chats.unshift(chat);
+        });
+        showChats(chats);
     })
     .catch((err) => {
         const errorMessage = document.querySelector('.error-message');
