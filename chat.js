@@ -22,25 +22,11 @@ const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'),
 const app = express();
 
 const server = http.createServer(app);
-// const wss = new WebSocket.Server({ server });
 const io = new Server(server);
 
-// let sockets = [];
-
-// wss.on("connection", (ws) => {
-//     sockets.push(ws)
-
-//     //Board Cast
-//     ws.on("message", (message) => {
-//         sockets.forEach(s => {
-//             s.send(message)
-//         })
-//     })
-// })
 io.on("connection", (socket) => {
     console.log('User connected', socket.id);
 
-    //Board Cast
     socket.on("chat-message", (message) => {
         console.log('user:', socket.id, 'said:', message);
         io.emit('chat-message', message)
