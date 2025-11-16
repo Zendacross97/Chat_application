@@ -1,6 +1,19 @@
 const token = localStorage.getItem('token');
-const socket = io("ws://localhost:3000");
+// console.log("Token being sent to socket:", token);
+if (!token) {
+  console.warn("No token found in localStorage. Socket will not connect.");
+}
+const socket = io("ws://localhost:3000", { 
+    auth: { token }
+});
 
+socket.on("connect_error", (err) => {
+  console.error("Socket connection failed:", err.message);
+  const errorMessage = document.querySelector('.error-message');
+  errorMessage.textContent = `Connection error: ${err.message}`;
+});
+
+// Handle incoming chat messages
 socket.on("chat-message", (message) => {
     showChats([message]);
 })
