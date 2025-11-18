@@ -7,6 +7,7 @@ function logIn(event) {
     axios.post('/user/login', logInDetails)
         .then((res) => {
             localStorage.setItem('token', res.data.token);
+            localStorage.setItem('user_email', email);
             alert(res.data.message);
             window.location.href = '/chat';
         })

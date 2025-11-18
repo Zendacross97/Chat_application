@@ -122,7 +122,15 @@ function showAllUsers() {
             <span class="email" style="display:none">${user.email}</span>
         `;
         li.addEventListener('click', () => {
-            lastId = -1; // Reset id to -1 to fetch new messages
+            // lastId = -1; // Reset id to -1 to fetch new messages
+            const senderEmail = localStorage.getItem('user_email');
+            const receiverEmail = user.email;
+            const roomName = [senderEmail, receiverEmail].sort().join("-");
+
+            window.roomName = roomName;
+            socket.emit("join-room", roomName);
+            alert("Room we join "+roomName);
+
             const chatHeading = document.querySelector('#chat-heading');
             chatHeading.innerHTML = `${user.name}`;
             createChatBody(user.id, user.type);
