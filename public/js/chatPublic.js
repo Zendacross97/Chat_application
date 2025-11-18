@@ -14,9 +14,9 @@ socket.on("connect_error", (err) => {
 });
 
 // Handle incoming chat messages
-socket.on("chat-message", (message) => {
-    showChats([message]);
-})
+socket.on("new-message", (chat) => {
+    showChats([chat]);
+});
 
 let chats = [], groups = [], users = [], userIds = [], lastId = -1, chatInterval= null;
 
@@ -66,6 +66,25 @@ function getAllUsers() {
     });
 }
 
+function showSearchEmail() {
+    const searchEmailForm = document.querySelector('#search_email');
+    searchEmailForm.innerHTML = `<input type="text" id="searchEmailInput" placeholder="search by email">
+                                <button type="submit" id=join>Join</button>
+                                `;
+    searchEmailForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const emailInput = document.querySelector('#searchEmailInput');
+        const email = emailInput.value.trim().toLowerCase();
+        if (!email) return alert("Please enter an email");
+
+        window.roomName = email;
+        socket.emit("join-room", email);
+        alert("Room we join "+email);
+        searchEmailForm.reset();
+    })
+}
+
 function showSearch(placeholder) {
     const searchForm = document.querySelector('#search');
     searchForm.innerHTML = `<input type="text" id="searchInput" placeholder="${placeholder}">`;
@@ -77,9 +96,11 @@ function showSearch(placeholder) {
         items.forEach(item => {
             const nameSpan = item.querySelector('.name');
             const numberSpan = item.querySelector('.number');
+            const emailSpan = item.querySelector('.email');
             const name = nameSpan ? nameSpan.textContent.toLowerCase() : '';
             const number = numberSpan ? numberSpan.textContent.toLowerCase() : '';
-            if (name.includes(searchValue) || number.includes(searchValue)) {
+            const email = emailSpan ? emailSpan.textContent.toLowerCase() : '';
+            if (name.includes(searchValue) || number.includes(searchValue) || email.includes(searchValue)) {
                 item.style.display = '';
             } else {
                 item.style.display = 'none';
@@ -98,6 +119,7 @@ function showAllUsers() {
         li.innerHTML = `
             <span class="name">${user.name}</span>
             <span class="number" style="display:none">${user.number}</span>
+            <span class="email" style="display:none">${user.email}</span>
         `;
         li.addEventListener('click', () => {
             lastId = -1; // Reset id to -1 to fetch new messages
@@ -123,6 +145,7 @@ function showGroupHeader() {
     const userButton = document.querySelector('.user');
     userButton.addEventListener('click', () => {
         refreshChat();
+        showSearchEmail();
         let placeholder = 'Search Users ...';
         showSearch(placeholder);
         groupHeader.innerHTML = '<h3>Users <button class="group">Groups</button></h3>';
@@ -598,12 +621,13 @@ function sendChat(event, id, type) {
     axios.post(`/chat/sendChat/${id}`, formData, { headers: { 'Authorization': token } })
     .then((res) => {
         const { mediaUrl, name, createdAt } = res.data;
-        socket.emit("chat-message", {
+        socket.emit("new-message", {
             message,
             mediaUrl,
             type,
             name,
-            createdAt
+            createdAt,
+            roomName: window.roomName
         });
 
         const errorMessage = document.querySelector('.error-message');
