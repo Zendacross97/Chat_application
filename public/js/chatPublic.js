@@ -729,7 +729,8 @@ function sendChat(event, id, type) {
     const form = event.target;
     const formData = new FormData(form);
     const message = formData.get('message').trim();
-    if (!message) {
+    const media = formData.get('media');
+    if (!message && (!media || media.size === 0)) {
         alert("Please enter a message");
         return;
     }

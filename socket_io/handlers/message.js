@@ -17,8 +17,15 @@ module.exports = (socket, io) => {
     });
     // shared handler
     socket.on("new-message", (chat) => {
-        console.log('user:', socket.user.name, 'said:', chat.message);
-
+        if (chat.message && !chat.mediaUrl) {
+            console.log('user:', socket.user.name, 'said:', chat.message);
+        }
+        if (!chat.message && chat.mediaUrl) {
+            console.log('user:', socket.user.name, 'sent a file:', chat.mediaUrl);
+        }
+        if (chat.message && chat.mediaUrl) {
+            console.log('user:', socket.user.name, 'said:', chat.message, 'sent a file:', chat.mediaUrl);
+        }
         if (chat.type === "user") {
             io.to(chat.roomName).emit('new-personal-message', chat);
         } else if (chat.type === "group") {

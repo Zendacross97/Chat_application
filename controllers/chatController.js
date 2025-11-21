@@ -30,11 +30,11 @@ exports.sendChat = async (req, res) => {
                 return res.status(403).json({ error: 'You are not a member of this group' });
             }
         }
-        const user = await userServices.getNameOfUserById(userId);// name is inside an object
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        const name = user.name;
+        // const user = await userServices.getNameOfUserById(userId);// name is inside an object
+        // if (!user) {
+        //     return res.status(404).json({ error: 'User not found' });
+        // }
+        // const name = user.name;
         
         let mediaUrl = null;
         if (mediaFile) {
