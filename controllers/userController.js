@@ -62,6 +62,23 @@ exports.logIn = async (req, res) => {
     }
 };
 
+exports.getMyDetails = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        const name = req.user.name;
+        const email = req.user.email;
+        const number = req.user.number;
+        const myDetails = {name, email, number};
+        res.status(200).json(myDetails);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: error.message });
+    }
+}
+
 exports.getAllUsers = async (req, res) => {
     try {
         const userId = req.user.id;

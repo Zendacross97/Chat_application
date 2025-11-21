@@ -11,5 +11,6 @@ router.post('/removeUserFromGroup/:groupId', userAuthentication.authenticate, gr
 router.post('/promoteMembers/:groupId', userAuthentication.authenticate, groupController.promoteToAdmin);
 router.post('/demoteMembers/:groupId', userAuthentication.authenticate, groupController.demoteFromAdmin);
 router.delete('/leaveGroup/:groupId', userAuthentication.authenticate, groupController.leaveGroup);
+router.delete('/delete_group/:groupId', userAuthentication.authenticate, groupController.deleteGroup);
 
 module.exports = router;

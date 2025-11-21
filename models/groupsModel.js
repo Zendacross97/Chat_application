@@ -12,6 +12,10 @@ const Group = sequelize.define('groups', {
         type: DataTypes.STRING,
         allowNull: false
     },
+    uuid: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
     type: {
         type: DataTypes.STRING,
         allowNull: false,

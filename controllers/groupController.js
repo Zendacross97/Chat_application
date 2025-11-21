@@ -1,4 +1,5 @@
 const groupServices = require('../services/groupServices');
+const { v4: uuidv4 } = require('uuid');
 
 exports.getAllGroups = async (req, res) => {
     try {
@@ -25,8 +26,10 @@ exports.createGroup = async (req, res) => {
         if (!userId) {
             return res.status(401).json({ error: 'User not authenticated' });
         }
+
+        const uuid = uuidv4();
         
-        const group = await groupServices.createGroup(name, userId);
+        const group = await groupServices.createGroup(name, uuid, userId);
         
         res.status(201).json({ message: 'Group created successfully', group });
     } catch (error) {
@@ -206,6 +209,28 @@ exports.leaveGroup = async (req, res) => {
         }
         
         res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+        console.log(error);
+    }
+}
+
+exports.deleteGroup = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        if (!groupId) {
+            return res.status(400).json({ error: 'Group ID is required' });
+        }
+        const userId = req.user.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        const adminCheck = await groupServices.isUserAdmin(groupId, userId);
+        if (!adminCheck) {
+            return res.status(403).json({ error: 'Only admins can delete members' });
+        }
+        await groupServices.deleteGroup(groupId);
+        res.status(200).json({ message: 'Group deleted successfully'});
     } catch (error) {
         res.status(500).json({ error: error.message });
         console.log(error);

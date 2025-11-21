@@ -72,10 +72,10 @@ exports.getAllGroups = async (userId) => {
             const demotableMembers = users.filter(user => adminIds.includes(user.id));
 
             if (!!isAdmin) {
-                return { id: group.id, name: group.name, type: group.type , isAdmin: !!isAdmin, members: allGroupMembers, admins: demotableMembers, non_admins: promotableMembers, non_members: nonGroupMembers };
+                return { id: group.id, name: group.name, uuid: group.uuid, type: group.type , isAdmin: !!isAdmin, members: allGroupMembers, admins: demotableMembers, non_admins: promotableMembers, non_members: nonGroupMembers };
             }
             else {
-                return { id: group.id, name: group.name, type: group.type , isAdmin: !!isAdmin, members: allGroupMembers };
+                return { id: group.id, name: group.name, uuid: group.uuid, type: group.type , isAdmin: !!isAdmin, members: allGroupMembers };
             }
         }));
 
@@ -86,10 +86,10 @@ exports.getAllGroups = async (userId) => {
     }
 }
 
-exports.createGroup = async (name, userId) => {
+exports.createGroup = async (name, uuid, userId) => {
     try {
         // Create the group
-        const group = await Group.create({ name });
+        const group = await Group.create({ name, uuid });
         
         // Associate the user with the group
         await UserGroup.create({ userId, groupId: group.id });
@@ -202,14 +202,43 @@ exports.leaveGroup = async (groupId, userId) => {
         }
         
         // Remove the user from the group
-        await UserGroup.destroy({ where: { groupId, userId } });
+        const affectedRowsUserGroup = await UserGroup.destroy({ where: { groupId, userId } });
+        if (affectedRowsUserGroup === 0) {
+            throw new Error (`UserGroup with ID ${groupId} not found or no changes were made.`);
+        }
 
         // Also remove from GroupAdmin if the user is an admin
         await GroupAdmin.destroy({ where: { groupId, userId } });
+
+        //Check if any member is in that group
+        const remainingMembers = await UserGroup.findAll({where: { groupId }});
+        if (remainingMembers.length === 0) {
+            const affectedRowsGroup = await Group.destroy({where: { id: groupId }});
+            if (affectedRowsGroup === 0) {
+                throw new Error (`Group with ID ${groupId} not found or no changes were made.`);
+            }
+        }
         
         return { message: 'Left group successfully' };
     } catch (error) {
         console.log(error);
         throw new Error('Error leaving group:', error.message);
     }
+}
+
+exports.deleteGroup = async (groupId) => {
+    try {
+        const affectedRowsUserGroup = await UserGroup.destroy({ where: { groupId } });
+        if (affectedRowsUserGroup === 0) {
+            throw new Error (`UserGroup with ID ${groupId} not found or no changes were made.`);
+        }
+        await GroupAdmin.destroy({ where: { groupId } });
+        const affectedRowsGroup = await Group.destroy({where: { id: groupId }});
+        if (affectedRowsGroup === 0) {
+            throw new Error (`Group with ID ${groupId} not found or no changes were made.`);
+        }
+    } catch (error) {
+        console.log(error);
+        throw new Error('Error deleting group:', error.message);
+    }   
 }

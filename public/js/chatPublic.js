@@ -13,9 +13,29 @@ socket.on("connect_error", (err) => {
   errorMessage.textContent = `Connection error: ${err.message}`;
 });
 
-// Handle incoming chat messages
-socket.on("new-message", (chat) => {
+// Handle incoming personal-chat messages
+socket.on("new-personal-message", (chat) => {
     showChats([chat]);
+});
+
+// Handle incoming group-chat messages
+socket.on("new-group-message", (chat) => {
+    showChats([chat]);
+});
+
+socket.on('user-typing', ({ name }) => {
+  const typingIndicator = document.querySelector('#typingIndicator');
+  if (typingIndicator) {
+    typingIndicator.innerText = `${name} is typing...`;
+    typingIndicator.style.display = 'block';
+  }
+});
+
+socket.on('user-stop-typing', () => {
+  const typingIndicator = document.querySelector('#typingIndicator');
+  if (typingIndicator) {
+    typingIndicator.style.display = 'none';
+  }
 });
 
 let chats = [], groups = [], users = [], userIds = [], lastId = -1, chatInterval= null;
@@ -28,11 +48,24 @@ window.addEventListener('DOMContentLoaded', () => {
     showGroupHeader();
     const chatHeading = document.querySelector('#chat-heading');
     chatHeading.textContent = 'Select on of the groups to start chatting';
+    getMyDetails();
     getAllUsers(); // Fetch all users on page load
     getAllGroups().then(() => {
         showAllGroups();
     });
 });
+
+function getMyDetails() {
+    return axios.get('/user/getMyDetails', { headers: { 'Authorization': token } })
+    .then((res) => {
+        const errorMessage = document.querySelector('.error-message');
+        errorMessage.innerHTML = '';
+        localStorage.setItem('my_details', JSON.stringify(res.data));
+    })
+    .catch((err) => {
+        console.log(err.message);
+    });
+}
 
 function getAllGroups() {
     return axios.get('/group/getAllGroups', { headers: { 'Authorization': token } })
@@ -123,7 +156,7 @@ function showAllUsers() {
         `;
         li.addEventListener('click', () => {
             // lastId = -1; // Reset id to -1 to fetch new messages
-            const senderEmail = localStorage.getItem('user_email');
+            const senderEmail = JSON.parse((localStorage.getItem('my_details'))).email;
             const receiverEmail = user.email;
             const roomName = [senderEmail, receiverEmail].sort().join("-");
 
@@ -177,13 +210,13 @@ function showGroupHeader() {
 }
 
 function refreshChat() {
-    lastId = -1; // Reset id to -1 to fetch new messages
-    if (chatInterval) {
-        clearInterval(chatInterval); // Clear previous interval if exists
-        chatInterval = null; // Reset chatInterval
-    }
-    const chatForm = document.querySelector('#chatForm');
-    chatForm.innerHTML = ''; // Clear chat form
+    // lastId = -1; // Reset id to -1 to fetch new messages
+    // if (chatInterval) {
+    //     clearInterval(chatInterval); // Clear previous interval if exists
+    //     chatInterval = null; // Reset chatInterval
+    // }
+    // const chatForm = document.querySelector('#chatForm');
+    // chatForm.innerHTML = ''; // Clear chat form
     const ul = document.querySelector('.messages');
     ul.innerHTML = ''; // Clear chat messages
     const errorMessage = document.querySelector('.error-message');
@@ -224,6 +257,7 @@ function createGroup(groupName) {
         groupForm.remove(); // Remove the form after successful creation
         const errorMessage = document.querySelector('.error-message');
         errorMessage.innerHTML = '';
+        alert(res.data.message);
         getAllGroups().then(() => {
             showGroupHeader();
             showSearch('Search Groups ...');
@@ -249,6 +283,11 @@ function showAllGroups() {
             <span class="name">${group.name}</span>
         `;
         li.addEventListener('click', () => {
+            const roomName = group.uuid;
+            window.roomName = roomName;
+            // socket.emit("join-group", roomName);
+            socket.emit("join-room", roomName);
+            alert("Group we join "+roomName);
             showGroupChatSection(group.id, group.name, group.type);
         });
         groupList.appendChild(li);
@@ -263,33 +302,83 @@ function showAllGroups() {
 function showGroupChatSection(groupId, groupName, groupType) {
     lastId = -1; // Reset id to -1 to fetch new messages
     const chatHeading = document.querySelector('#chat-heading');
-    chatHeading.innerHTML = `${groupName} <button id="showMembersBtn">Members</button> <button id="leaveGroupBtn">Leave</button>`;
-    const showMembersBtn = document.querySelector('#showMembersBtn');
+    chatHeading.innerHTML = ``;
+    chatHeading.innerHTML = `${groupName} <button id="showMembersBtn_${groupId}">Members</button> <button id="leaveGroupBtn_${groupId}">Leave Group</button> `;
+    const showMembersBtn = document.querySelector(`#showMembersBtn_${groupId}`);
     showMembersBtn.addEventListener('click', () => {
         showGroupMemebers(groupId);
     });
-    const leaveGroupBtn = document.querySelector('#leaveGroupBtn');
+    const leaveGroupBtn = document.querySelector(`#leaveGroupBtn_${groupId}`);
     leaveGroupBtn.addEventListener('click', () => {
         leaveGroup(groupId);
     })
     createChatBody(groupId, groupType);
+    const groups = JSON.parse(localStorage.getItem('groups')) || [];
+    const group = groups.find(g => g.id === groupId);
+    if (group.isAdmin) {
+        const deleteGroupBtn = document.createElement('button');
+        deleteGroupBtn.id = `deleteGroupBtn_${groupId}`
+        deleteGroupBtn.textContent = 'Delete Group';
+        deleteGroupBtn.addEventListener('click', () => {
+            deleteGroup(groupId);
+        })
+        chatHeading.appendChild(deleteGroupBtn);
+    }
 }
 
+// function createChatBody(id, type) {
+//     const chatForm = document.querySelector('#chatForm');
+//     chatForm.innerHTML = ''; // Clear chat form
+//     chatForm.innerHTML = `<input type="text" id="message_${id}_${type}" name="message" placeholder="Type your message here">
+//     <input type="file" name="media">
+//     <button type="submit" id="sendChat_${id}_${type}">Send</button>`;
+//     chatForm.addEventListener('submit', (event) => {
+//         sendChat(event, id, type);
+//     });
+//     // if (chatInterval) {
+//     //     clearInterval(chatInterval); // Clear previous interval if exists
+//     //     chatInterval = null; // Reset chatInterval
+//     // }
+//     // chatInterval = setInterval(() => getChats(id, type), 1000); // Fetch chats every 1 second
+//     getChats(id, type);
+// }
 function createChatBody(id, type) {
-    const chatForm = document.querySelector('#chatForm');
-    chatForm.innerHTML = ''; // Clear chat form
-    chatForm.innerHTML = `<input type="text" id="message" name="message" placeholder="Type your message here">
+  const chatMain = document.querySelector('.chat-main');
+
+  // Remove any existing form
+  const oldForm = document.querySelector('#chatForm');
+  if (oldForm) oldForm.remove();
+
+  // Create new form
+  const form = document.createElement('form');
+  form.id = 'chatForm';
+  form.innerHTML = `
+    <input type="text" id="message_${id}_${type}" name="message" placeholder="Type your message here">
     <input type="file" name="media">
-    <button type="submit">Send</button>`;
-    chatForm.addEventListener('submit', (event) => {
-        sendChat(event, id, type);
+    <button type="submit" id="sendChat_${id}_${type}">Send</button>
+    <div id="typingIndicator" style="display:none; font-style:italic; margin-top:5px;"></div>
+  `;
+
+  form.addEventListener('submit', (event) => {
+    sendChat(event, id, type);
+  });
+  const messageInput = form.querySelector(`#message_${id}_${type}`);
+    let typingTimeout;
+
+    messageInput.addEventListener('input', () => {
+        socket.emit('typing', { roomName: window.roomName, name: JSON.parse((localStorage.getItem('my_details'))).name });
+
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            socket.emit('stop-typing', { roomName: window.roomName });
+        }, 1000);
     });
-    if (chatInterval) {
-        clearInterval(chatInterval); // Clear previous interval if exists
-        chatInterval = null; // Reset chatInterval
-    }
-    // chatInterval = setInterval(() => getChats(id, type), 1000); // Fetch chats every 1 second
-    getChats(id, type);
+
+  // Insert form before the error message or chatMessages
+  const errorMessage = document.querySelector('.error-message');
+  chatMain.insertBefore(form, errorMessage);
+
+  getChats(id, type);
 }
 
 function showGroupMemebers(groupId) {
@@ -619,11 +708,31 @@ function leaveGroup(groupId) {
     });
 }
 
+function deleteGroup(groupId) {
+    axios.delete(`/group/delete_group/${groupId}`, { headers: { 'Authorization': token } })
+    .then((res) => {
+        alert(res.data.message);
+        getAllGroups().then(() => {
+            showAllGroups();
+        });
+    } )
+    .catch((err) => {
+        const errorMessage = document.querySelector('.error-message');
+        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
+        errorMessage.style.color = 'red';
+        console.log(err.message);
+    });
+}
+
 function sendChat(event, id, type) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
     const message = formData.get('message').trim();
+    if (!message) {
+        alert("Please enter a message");
+        return;
+    }
     formData.set('type', type); // add type to FormData
     formData.set('message', message);
     axios.post(`/chat/sendChat/${id}`, formData, { headers: { 'Authorization': token } })
@@ -697,7 +806,7 @@ function getChats(id, chatType) {
 }
 
 function showChats(chats) {
-    const localChats = JSON.parse(localStorage.getItem('chats')) || [];
+    // const localChats = JSON.parse(localStorage.getItem('chats')) || [];
     const ul = document.querySelector('.messages');
     // ul.innerHTML = ''; // Clear existing messages
     // localChats.forEach(chat => {
