@@ -64,14 +64,14 @@ exports.logIn = async (req, res) => {
 
 exports.getMyDetails = async (req, res) => {
     try {
-        const userId = req.user.id;
-        if (!userId) {
+        const id = req.user.id;
+        if (!id) {
             return res.status(401).json({ error: 'User not authenticated' });
         }
         const name = req.user.name;
         const email = req.user.email;
         const number = req.user.number;
-        const myDetails = {name, email, number};
+        const myDetails = {id, name, email, number};
         res.status(200).json(myDetails);
     } catch (error) {
         console.error('Error fetching users:', error);

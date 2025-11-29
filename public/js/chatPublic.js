@@ -1,5 +1,4 @@
 const token = localStorage.getItem('token');
-// console.log("Token being sent to socket:", token);
 if (!token) {
   console.warn("No token found in localStorage. Socket will not connect.");
 }
@@ -9,18 +8,18 @@ const socket = io("ws://localhost:3000", {
 
 socket.on("connect_error", (err) => {
   console.error("Socket connection failed:", err.message);
-  const errorMessage = document.querySelector('.error-message');
-  errorMessage.textContent = `Connection error: ${err.message}`;
 });
 
 // Handle incoming personal-chat messages
 socket.on("new-personal-message", (chat) => {
     showChats([chat]);
+    fetchSmartReplies(chat.message, chat.senderId);
 });
 
 // Handle incoming group-chat messages
 socket.on("new-group-message", (chat) => {
     showChats([chat]);
+    fetchSmartReplies(chat.message, chat.senderId);
 });
 
 socket.on('user-typing', ({ name }) => {
@@ -58,8 +57,6 @@ window.addEventListener('DOMContentLoaded', () => {
 function getMyDetails() {
     return axios.get('/user/getMyDetails', { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         localStorage.setItem('my_details', JSON.stringify(res.data));
     })
     .catch((err) => {
@@ -70,8 +67,6 @@ function getMyDetails() {
 function getAllGroups() {
     return axios.get('/group/getAllGroups', { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         groups = []; // Reset groups array
         res.data.forEach(group => {
             groups.push(group);
@@ -86,8 +81,6 @@ function getAllGroups() {
 function getAllUsers() {
     axios.get('/user/getAllUsers', { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         users = []; // Reset users array
         res.data.forEach(user => {
             users.push(user);
@@ -97,25 +90,6 @@ function getAllUsers() {
     .catch((err) => {
         console.log(err.message);
     });
-}
-
-function showSearchEmail() {
-    const searchEmailForm = document.querySelector('#search_email');
-    searchEmailForm.innerHTML = `<input type="text" id="searchEmailInput" placeholder="search by email">
-                                <button type="submit" id=join>Join</button>
-                                `;
-    searchEmailForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-
-        const emailInput = document.querySelector('#searchEmailInput');
-        const email = emailInput.value.trim().toLowerCase();
-        if (!email) return alert("Please enter an email");
-
-        window.roomName = email;
-        socket.emit("join-room", email);
-        alert("Room we join "+email);
-        searchEmailForm.reset();
-    })
 }
 
 function showSearch(placeholder) {
@@ -155,14 +129,13 @@ function showAllUsers() {
             <span class="email" style="display:none">${user.email}</span>
         `;
         li.addEventListener('click', () => {
-            // lastId = -1; // Reset id to -1 to fetch new messages
             const senderEmail = JSON.parse((localStorage.getItem('my_details'))).email;
             const receiverEmail = user.email;
             const roomName = [senderEmail, receiverEmail].sort().join("-");
 
             window.roomName = roomName;
             socket.emit("join-room", roomName);
-            alert("Room we join "+roomName);
+            console.log("Room we join "+roomName);
 
             const chatHeading = document.querySelector('#chat-heading');
             chatHeading.innerHTML = `${user.name}`;
@@ -185,15 +158,14 @@ function showGroupHeader() {
     p.innerHTML = 'Create a new group <button id="createGroupFormButton">Create</button>';
     const userButton = document.querySelector('.user');
     userButton.addEventListener('click', () => {
-        refreshChat();
-        showSearchEmail();
+        document.querySelector('#chatMessages').innerHTML = '';
         let placeholder = 'Search Users ...';
         showSearch(placeholder);
         groupHeader.innerHTML = '<h3>Users <button class="group">Groups</button></h3>';
         p.innerHTML = 'Users in your contact list:';
         const groupButton = document.querySelector('.group');
         groupButton.addEventListener('click', () => {
-            refreshChat();
+            document.querySelector('#chatMessages').innerHTML = '';
             placeholder = 'Search Groups ...';
             showSearch(placeholder);
             showGroupHeader();
@@ -207,20 +179,6 @@ function showGroupHeader() {
     createGroupFormButton.addEventListener('click', () => {
         createGroupForm();
     });
-}
-
-function refreshChat() {
-    // lastId = -1; // Reset id to -1 to fetch new messages
-    // if (chatInterval) {
-    //     clearInterval(chatInterval); // Clear previous interval if exists
-    //     chatInterval = null; // Reset chatInterval
-    // }
-    // const chatForm = document.querySelector('#chatForm');
-    // chatForm.innerHTML = ''; // Clear chat form
-    const ul = document.querySelector('.messages');
-    ul.innerHTML = ''; // Clear chat messages
-    const errorMessage = document.querySelector('.error-message');
-    errorMessage.innerHTML = ''; // Clear error messages
 }
 
 function createGroupForm() {
@@ -255,8 +213,6 @@ function createGroup(groupName) {
     .then((res) => {
         const groupForm = document.querySelector('#createGroupForm');
         groupForm.remove(); // Remove the form after successful creation
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         alert(res.data.message);
         getAllGroups().then(() => {
             showGroupHeader();
@@ -265,9 +221,8 @@ function createGroup(groupName) {
         });
     })
     .catch((err) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
+        alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
     });
 }
 
@@ -285,9 +240,8 @@ function showAllGroups() {
         li.addEventListener('click', () => {
             const roomName = group.uuid;
             window.roomName = roomName;
-            // socket.emit("join-group", roomName);
             socket.emit("join-room", roomName);
-            alert("Group we join "+roomName);
+            console.log("Group we join "+roomName);
             showGroupChatSection(group.id, group.name, group.type);
         });
         groupList.appendChild(li);
@@ -326,24 +280,8 @@ function showGroupChatSection(groupId, groupName, groupType) {
     }
 }
 
-// function createChatBody(id, type) {
-//     const chatForm = document.querySelector('#chatForm');
-//     chatForm.innerHTML = ''; // Clear chat form
-//     chatForm.innerHTML = `<input type="text" id="message_${id}_${type}" name="message" placeholder="Type your message here">
-//     <input type="file" name="media">
-//     <button type="submit" id="sendChat_${id}_${type}">Send</button>`;
-//     chatForm.addEventListener('submit', (event) => {
-//         sendChat(event, id, type);
-//     });
-//     // if (chatInterval) {
-//     //     clearInterval(chatInterval); // Clear previous interval if exists
-//     //     chatInterval = null; // Reset chatInterval
-//     // }
-//     // chatInterval = setInterval(() => getChats(id, type), 1000); // Fetch chats every 1 second
-//     getChats(id, type);
-// }
 function createChatBody(id, type) {
-  const chatMain = document.querySelector('.chat-main');
+const chatMessages = document.querySelector('#chatMessages');
 
   // Remove any existing form
   const oldForm = document.querySelector('#chatForm');
@@ -353,10 +291,13 @@ function createChatBody(id, type) {
   const form = document.createElement('form');
   form.id = 'chatForm';
   form.innerHTML = `
+    <div id="predictive-suggestions-container" class="suggestions-container"></div>
     <input type="text" id="message_${id}_${type}" name="message" placeholder="Type your message here">
     <input type="file" name="media">
     <button type="submit" id="sendChat_${id}_${type}">Send</button>
     <div id="typingIndicator" style="display:none; font-style:italic; margin-top:5px;"></div>
+    <div id="smart-replies-container" class="smart-replies-container"></div>
+    <ul class="messages"></ul>
   `;
 
   form.addEventListener('submit', (event) => {
@@ -364,6 +305,7 @@ function createChatBody(id, type) {
   });
   const messageInput = form.querySelector(`#message_${id}_${type}`);
     let typingTimeout;
+    let predictiveTypingTimeout;
 
     messageInput.addEventListener('input', () => {
         socket.emit('typing', { roomName: window.roomName, name: JSON.parse((localStorage.getItem('my_details'))).name });
@@ -372,13 +314,95 @@ function createChatBody(id, type) {
         typingTimeout = setTimeout(() => {
             socket.emit('stop-typing', { roomName: window.roomName });
         }, 1000);
+        const partialInput = messageInput.value.trim();
+        clearTimeout(predictiveTypingTimeout);
+
+        if (partialInput.length > 3) { // Start suggesting after a few characters
+            predictiveTypingTimeout = setTimeout(() => {
+                fetchPredictiveSuggestions(partialInput, messageInput);
+            }, 300); // Debounce API call for 300ms
+        } else {
+            // Clear suggestions if input is too short or empty
+            const container = document.querySelector('#predictive-suggestions-container');
+            if (container) container.innerHTML = '';
+        }
+    });
+    chatMessages.appendChild(form);
+    getChats(id, type);
+}
+
+function fetchPredictiveSuggestions(partialInput, inputElement) {
+    axios.get(`/chat/getPredictiveTyping?partialInput=${encodeURIComponent(partialInput)}`, { headers: { 'Authorization': token } })
+    .then((res) => {
+        showPredictiveSuggestions(res.data, inputElement);
+    })
+    .catch((err) => {
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
+    })
+}
+
+function showPredictiveSuggestions(suggestions, inputElement) {
+    const container = document.querySelector('#predictive-suggestions-container');
+    if (!container) return;
+    container.innerHTML = ''; // Clear previous suggestions
+    suggestions.forEach(suggestion => {
+        const button = document.createElement('button');
+        button.classList.add('predictive-suggestion-btn');
+        button.textContent = `${suggestion}`;
+
+        button.addEventListener('click', () => {
+            inputElement.value += ` ${button.textContent}`;
+            container.innerHTML = '';
+            inputElement.dispatchEvent(new Event('input'));// Manually trigger the input event to update typing status
+            inputElement.focus();
+        });
+        container.appendChild(button);
+    });
+}
+
+function fetchSmartReplies(latestMessage, senderId) {
+    const myDetails = JSON.parse(localStorage.getItem('my_details'));
+    const ul = document.querySelector('.messages');
+    const isIncoming = ul.firstChild && myDetails.id !== senderId && latestMessage;
+    if (!isIncoming) {
+        const container = document.querySelector('#smart-replies-container');
+        if (container) container.innerHTML = '';
+        console.log('No incoming message');
+        return;
+    }
+    axios.get(`/chat/getSmartReplies?message=${encodeURIComponent(latestMessage)}`, { headers: { 'Authorization': token } })
+    .then(res => {
+        showSmartReplies(res.data);
+    })
+    .catch(err => {
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
+    })
+}
+
+function showSmartReplies(replies) {
+    const container = document.querySelector('#smart-replies-container');
+    const messageInput = document.querySelector('#chatForm input[name="message"]');
+    if (!container || !messageInput) return;
+
+    container.innerHTML = '';
+
+    replies.forEach(reply => {
+        const button = document.createElement('button');
+        button.type = "button";// prevents submit behavior automatically, no need for event.preventDefault()
+        button.classList.add('smart-reply-btn');
+        button.textContent = reply;
+
+        button.addEventListener('click', () => {
+            if(messageInput) {
+                messageInput.value = reply;
+                messageInput.focus();
+                container.innerHTML = '';
+                messageInput.dispatchEvent(new Event('input'));
+            }
+        });
+        container.appendChild(button);
     });
 
-  // Insert form before the error message or chatMessages
-  const errorMessage = document.querySelector('.error-message');
-  chatMain.insertBefore(form, errorMessage);
-
-  getChats(id, type);
 }
 
 function showGroupMemebers(groupId) {
@@ -469,16 +493,11 @@ function showUnaddedUsers(groupId) {
 function addUserToGroup(groupId, userIds) {
     return axios.post(`/group/addUserToGroup/${groupId}`, { userIds }, { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         alert(res.data.message);
     })
     .catch((err) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
         alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
-        console.log(err.message);
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
     });
 }
 
@@ -517,16 +536,11 @@ function showRemovableUsers(groupId) {
 function removeUserFromGroup(groupId, userIds) {
     return axios.post(`/group/removeUserFromGroup/${groupId}`, { userIds }, { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         alert(res.data.message);
     })
     .catch((err) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
         alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
-        console.log(err.message);
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
     });
 }
 
@@ -566,16 +580,11 @@ function showPromotableUsers(groupId) {
 function promoteMembers(groupId, userIds) {
     return axios.post(`/group/promoteMembers/${groupId}`, { userIds }, { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         alert(res.data.message);
     })
     .catch((err) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
         alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
-        console.log(err.message);
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
     });
 }
 
@@ -614,14 +623,9 @@ function showDemotableUsers(groupId) {
 function demoteMembers(groupId, userIds) {
     return axios.post(`/group/demoteMembers/${groupId}`, { userIds }, { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         alert(res.data.message);
     })
     .catch((err) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
         alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
         console.log(err.message);
     });
@@ -679,8 +683,6 @@ function showRequiredUsers(users) {
 function leaveGroup(groupId) {
     axios.delete(`/group/leaveGroup/${groupId}`, { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
         if (chatInterval) {
             clearInterval(chatInterval); // Clear the chat interval
         }
@@ -701,10 +703,8 @@ function leaveGroup(groupId) {
         ul.appendChild(li);
     })
     .catch((err) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
-        console.log(err.message);
+        alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
     });
 }
 
@@ -717,10 +717,8 @@ function deleteGroup(groupId) {
         });
     } )
     .catch((err) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
-        console.log(err.message);
+        alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
     });
 }
 
@@ -738,8 +736,10 @@ function sendChat(event, id, type) {
     formData.set('message', message);
     axios.post(`/chat/sendChat/${id}`, formData, { headers: { 'Authorization': token } })
     .then((res) => {
-        const { mediaUrl, name, createdAt } = res.data;
+        const { senderId, message, mediaUrl, name, createdAt } = res.data;
         socket.emit("new-message", {
+            id,
+            senderId,
             message,
             mediaUrl,
             type,
@@ -747,49 +747,17 @@ function sendChat(event, id, type) {
             createdAt,
             roomName: window.roomName
         });
-
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
     })
     .catch((err) => {
         alert((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred');
-        console.log(err.message);
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
     });
     event.target.reset();
 }
 
 function getChats(id, chatType) {
-    // axios.get(`/chat/getChats/${id}?type=${chatType}&lastMessageId=${lastId}`, { headers: { 'Authorization': token } })
     axios.get(`/chat/getChats/${id}?type=${chatType}`, { headers: { 'Authorization': token } })
     .then((res) => {
-        const errorMessage = document.querySelector('.error-message');
-        errorMessage.innerHTML = '';
-        // if (lastId === -1) {
-        //     localStorage.removeItem('chats'); // Clear previous chats if id is -1
-        //     chats = []; // Reset chats array
-        //     res.data.forEach(chat => {
-        //         chats.push(chat);
-        //     });
-        //     lastId = res.data[0].id; // Update id to the last message's id as data is in descending order
-        //     showChats(res.data);
-        // }
-        // else {
-        //     if (res.data.length !== 0) {
-        //         res.data.forEach(chat => {
-        //             chats.unshift(chat);
-        //             if (chats.length > 10) // Limit to last 10 chats
-        //             chats.pop(); // Remove the oldest chat if more than 10
-        //         });
-        //         lastId = res.data[res.data.length - 1].id; // Update id to the last message's id
-        //         localStorage.setItem('chats', JSON.stringify(chats));
-        //         showChats(res.data);
-        //     }
-        //     else {
-        //         return; // No new messages, exit the function
-        //     }
-        // }
-        // localStorage.setItem('chats', JSON.stringify(chats));
-        // showChats();
         chats = []; // Reset chats array
         res.data.forEach(chat => {
             chats.unshift(chat);
@@ -797,20 +765,12 @@ function getChats(id, chatType) {
         showChats(chats);
     })
     .catch((err) => {
-        const errorMessage = document.querySelector('.error-message');
-        const ul = document.querySelector('.messages');
-        ul.innerHTML = ''; // Clear chat messages
-        errorMessage.innerHTML = (err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred';
-        errorMessage.style.color = 'red';
-        console.log(err.message);
+        console.log((err.response && err.response.data && err.response.data.error) ? err.response.data.error : 'An error occurred', `error: ${err.message}`);
      });
 }
 
 function showChats(chats) {
-    // const localChats = JSON.parse(localStorage.getItem('chats')) || [];
     const ul = document.querySelector('.messages');
-    // ul.innerHTML = ''; // Clear existing messages
-    // localChats.forEach(chat => {
     chats.forEach(chat => {
         const li = document.createElement('li');
         li.innerHTML = `
@@ -823,7 +783,6 @@ function showChats(chats) {
                 ${chat.mediaUrl ? getMediaHtml(chat.mediaUrl) : ''}
             </div>
         `;
-        // ul.appendChild(li);
         ul.insertBefore(li, ul.firstChild);
     });
 }

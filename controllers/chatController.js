@@ -1,8 +1,8 @@
 const path = require('path');
 const chatService = require('../services/chatServices');
-const userServices = require('../services/userServices');
 const groupServices = require('../services/groupServices');
 const awsServices = require('../services/awsServices');
+const geminiServices = require('../services/geminiServices');
 const { CronJob } = require('cron');
 
 exports.getChatPage = (req, res) => {
@@ -30,12 +30,6 @@ exports.sendChat = async (req, res) => {
                 return res.status(403).json({ error: 'You are not a member of this group' });
             }
         }
-        // const user = await userServices.getNameOfUserById(userId);// name is inside an object
-        // if (!user) {
-        //     return res.status(404).json({ error: 'User not found' });
-        // }
-        // const name = user.name;
-        
         let mediaUrl = null;
         if (mediaFile) {
             // Upload to S3
@@ -47,7 +41,7 @@ exports.sendChat = async (req, res) => {
         // Save mediaUrl in your chatService.createChat (add a mediaUrl param)
         const chat = await chatService.createChat(req.user.name, message, mediaUrl, userId, id, type); // Pass mediaUrl to createChat
 
-        res.status(201).json({ name: chat.name, message: chat.message, mediaUrl: chat.mediaUrl,  createdAt: chat.createdAt });
+        res.status(201).json({ senderId: chat.userId, name: chat.name, message: chat.message, mediaUrl: chat.mediaUrl,  createdAt: chat.createdAt });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });
@@ -56,10 +50,6 @@ exports.sendChat = async (req, res) => {
 
 exports.getChat = async (req, res) => {
     try {
-        // const lastMessageId = +(req.query.lastMessageId);
-        // if (!lastMessageId) {
-        //     return res.status(400).json({ error: 'Invalid last message ID' });
-        // }
         const chatType = req.query.type;
         if (!chatType || (chatType !== 'group' && chatType !== 'user')) {
             return res.status(400).json({ error: 'Invalid chat type' });
@@ -72,17 +62,6 @@ exports.getChat = async (req, res) => {
         if (!id) {
             return res.status(400).json({ error: 'Chat ID is required' });
         }
-        // if (lastMessageId === -1) {
-        //     const chats = await chatService.getLastTenChats(id, userId, chatType);
-        //     if (!chats || chats.length === 0) {
-        //         return res.status(404).json({ error: 'No chat history found' });
-        //     }
-        //     res.status(200).json(chats);
-        // }
-        // else {
-        //     const chats = await chatService.getLastRemainingChats(lastMessageId, id, userId, chatType);
-        //     res.status(200).json(chats);
-        // }
         const chats = await chatService.getLastTenChats(id, userId, chatType);
         if (!chats || chats.length === 0) {
             return res.status(404).json({ error: 'No chat history found' });
@@ -91,6 +70,42 @@ exports.getChat = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error});
         console.log(error);
+    }
+};
+
+exports.getSmartReplies = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        const { message } = req.query;
+        if (!message) {
+            return res.status(400).json({ error: "Message query parameter is required." });
+        }
+        const replies = await geminiServices.generateSmartReplies(message);
+        res.status(200).json(replies);
+    } catch (error) {
+        console.error("Controller Error:", error);
+        res.status(500).json({ error: "Failed to generate smart replies." });
+    }
+};
+
+exports.getPredictiveTyping = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        const { partialInput } = req.query;
+        if (!partialInput) {
+            return res.status(400).json({ error: "Partial input query parameter is required." });
+        }
+        const suggestions = await geminiServices.generatePredictiveTyping(partialInput);
+        res.status(200).json(suggestions);
+    } catch (error) {
+        console.error("Controller Error:", error);
+        res.status(500).json({ error: "Failed to generate predictive typing suggestions." });
     }
 };
 
